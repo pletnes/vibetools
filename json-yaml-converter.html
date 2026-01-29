@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON to YAML Converter</title>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            font-weight: 300;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: calc(100vh - 100px);
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .panel-header h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #00a8cc;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #eee;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        textarea {
+            flex: 1;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: #00d4ff;
+        }
+
+        textarea::placeholder {
+            color: #555;
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-size: 13px;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .panel {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>JSON ↔ YAML Converter</h1>
+
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>JSON</h2>
+                <div class="buttons">
+                    <button onclick="formatJson()">Format</button>
+                    <button class="btn-secondary" onclick="clearJson()">Clear</button>
+                </div>
+            </div>
+            <textarea
+                id="jsonInput"
+                placeholder="Paste or type JSON here..."
+                spellcheck="false"
+            ></textarea>
+            <div class="error" id="jsonError"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h2>YAML</h2>
+                <div class="buttons">
+                    <button onclick="copyYaml()">Copy</button>
+                    <button class="btn-secondary" onclick="clearYaml()">Clear</button>
+                </div>
+            </div>
+            <textarea
+                id="yamlOutput"
+                placeholder="YAML output will appear here..."
+                spellcheck="false"
+            ></textarea>
+            <div class="error" id="yamlError"></div>
+        </div>
+    </div>
+
+    <script>
+        const jsonInput = document.getElementById('jsonInput');
+        const yamlOutput = document.getElementById('yamlOutput');
+        const jsonError = document.getElementById('jsonError');
+        const yamlError = document.getElementById('yamlError');
+
+        let formatTimeout;
+
+        // Auto-format and convert on input
+        jsonInput.addEventListener('input', () => {
+            clearTimeout(formatTimeout);
+            formatTimeout = setTimeout(() => {
+                autoFormatAndConvert();
+            }, 500);
+        });
+
+        // Convert YAML back to JSON when YAML is edited
+        yamlOutput.addEventListener('input', () => {
+            clearTimeout(formatTimeout);
+            formatTimeout = setTimeout(() => {
+                convertYamlToJson();
+            }, 500);
+        });
+
+        function autoFormatAndConvert() {
+            const input = jsonInput.value.trim();
+            jsonError.textContent = '';
+            yamlError.textContent = '';
+
+            if (!input) {
+                yamlOutput.value = '';
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(input);
+
+                // Auto-format JSON
+                const formatted = JSON.stringify(parsed, null, 2);
+                const cursorPos = jsonInput.selectionStart;
+                jsonInput.value = formatted;
+
+                // Try to restore cursor position reasonably
+                jsonInput.selectionStart = Math.min(cursorPos, formatted.length);
+                jsonInput.selectionEnd = jsonInput.selectionStart;
+
+                // Convert to YAML
+                const yaml = jsyaml.dump(parsed, {
+                    indent: 2,
+                    lineWidth: -1,
+                    noRefs: true,
+                    sortKeys: false
+                });
+                yamlOutput.value = yaml;
+            } catch (e) {
+                jsonError.textContent = 'Invalid JSON: ' + e.message;
+            }
+        }
+
+        function convertYamlToJson() {
+            const input = yamlOutput.value.trim();
+            yamlError.textContent = '';
+            jsonError.textContent = '';
+
+            if (!input) {
+                jsonInput.value = '';
+                return;
+            }
+
+            try {
+                const parsed = jsyaml.load(input);
+                const json = JSON.stringify(parsed, null, 2);
+                jsonInput.value = json;
+            } catch (e) {
+                yamlError.textContent = 'Invalid YAML: ' + e.message;
+            }
+        }
+
+        function formatJson() {
+            const input = jsonInput.value.trim();
+            jsonError.textContent = '';
+
+            if (!input) return;
+
+            try {
+                const parsed = JSON.parse(input);
+                jsonInput.value = JSON.stringify(parsed, null, 2);
+                autoFormatAndConvert();
+            } catch (e) {
+                jsonError.textContent = 'Invalid JSON: ' + e.message;
+            }
+        }
+
+        function clearJson() {
+            jsonInput.value = '';
+            yamlOutput.value = '';
+            jsonError.textContent = '';
+            yamlError.textContent = '';
+        }
+
+        function clearYaml() {
+            yamlOutput.value = '';
+        }
+
+        function copyYaml() {
+            if (yamlOutput.value) {
+                navigator.clipboard.writeText(yamlOutput.value).then(() => {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = originalText, 1500);
+                });
+            }
+        }
+
+        // Example JSON to show on load
+        const exampleJson = {
+            "name": "JSON to YAML Converter",
+            "version": "1.0.0",
+            "features": [
+                "Auto-format JSON",
+                "Real-time conversion",
+                "Bidirectional editing"
+            ],
+            "config": {
+                "theme": "dark",
+                "autoFormat": true
+            }
+        };
+
+        jsonInput.value = JSON.stringify(exampleJson, null, 2);
+        autoFormatAndConvert();
+    </script>
+</body>
+</html>
