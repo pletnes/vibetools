@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicode Code Point Inspector</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .panel {
+            margin-bottom: 20px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        textarea, input {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 16px;
+            outline: none;
+            width: 100%;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        textarea:focus, input:focus { border-color: #00d4ff; }
+        textarea::placeholder, input::placeholder { color: #555; }
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .codepoint-input {
+            display: flex;
+            gap: 10px;
+        }
+        .codepoint-input input { flex: 1; }
+        .char-result {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 32px;
+            text-align: center;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #16213e;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        th {
+            background: #0f1629;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        td { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+        td.char { font-size: 24px; text-align: center; width: 60px; }
+        tr:hover { background: #1d2a4d; }
+        .mono { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+        @media (max-width: 768px) {
+            .row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Unicode Code Point Inspector</h1>
+    <div class="container">
+        <div class="row">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Text to Inspect</h2>
+                    <button class="btn-secondary" onclick="clearText()">Clear</button>
+                </div>
+                <textarea id="textInput" placeholder="Type or paste text to see code points..." spellcheck="false"></textarea>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Code Point to Character</h2>
+                </div>
+                <div class="codepoint-input">
+                    <input type="text" id="codeInput" placeholder="U+1F600 or 128512 or 0x1F600">
+                    <button onclick="convertCodePoint()">Convert</button>
+                </div>
+                <div class="char-result" id="charResult"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Character Breakdown</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Char</th>
+                        <th>Code Point (Hex)</th>
+                        <th>Code Point (Dec)</th>
+                        <th>UTF-8 Bytes</th>
+                        <th>Name/Description</th>
+                    </tr>
+                </thead>
+                <tbody id="breakdown"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const codeInput = document.getElementById('codeInput');
+        const breakdown = document.getElementById('breakdown');
+        const charResult = document.getElementById('charResult');
+        let timeout;
+
+        textInput.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(analyze, 100);
+        });
+
+        codeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') convertCodePoint();
+        });
+
+        function analyze() {
+            const text = textInput.value;
+            breakdown.innerHTML = '';
+
+            if (!text) return;
+
+            // Iterate over code points (handles surrogate pairs correctly)
+            for (const char of text) {
+                const codePoint = char.codePointAt(0);
+                const row = document.createElement('tr');
+
+                // Get UTF-8 bytes
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(char);
+                const bytesHex = Array.from(bytes).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+
+                row.innerHTML = `
+                    <td class="char">${escapeHtml(char)}</td>
+                    <td>U+${codePoint.toString(16).toUpperCase().padStart(4, '0')}</td>
+                    <td>${codePoint}</td>
+                    <td>${bytesHex}</td>
+                    <td>${getCharDescription(char, codePoint)}</td>
+                `;
+                breakdown.appendChild(row);
+            }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function getCharDescription(char, codePoint) {
+            // Common character ranges
+            if (codePoint >= 0x0000 && codePoint <= 0x001F) return 'Control character';
+            if (codePoint === 0x0020) return 'Space';
+            if (codePoint >= 0x0021 && codePoint <= 0x002F) return 'Punctuation';
+            if (codePoint >= 0x0030 && codePoint <= 0x0039) return 'Digit';
+            if (codePoint >= 0x0041 && codePoint <= 0x005A) return 'Latin uppercase';
+            if (codePoint >= 0x0061 && codePoint <= 0x007A) return 'Latin lowercase';
+            if (codePoint >= 0x0080 && codePoint <= 0x00FF) return 'Latin-1 Supplement';
+            if (codePoint >= 0x0100 && codePoint <= 0x017F) return 'Latin Extended-A';
+            if (codePoint >= 0x0370 && codePoint <= 0x03FF) return 'Greek';
+            if (codePoint >= 0x0400 && codePoint <= 0x04FF) return 'Cyrillic';
+            if (codePoint >= 0x0600 && codePoint <= 0x06FF) return 'Arabic';
+            if (codePoint >= 0x3040 && codePoint <= 0x309F) return 'Hiragana';
+            if (codePoint >= 0x30A0 && codePoint <= 0x30FF) return 'Katakana';
+            if (codePoint >= 0x4E00 && codePoint <= 0x9FFF) return 'CJK Unified Ideograph';
+            if (codePoint >= 0x1F300 && codePoint <= 0x1F9FF) return 'Emoji';
+            if (codePoint >= 0x1F600 && codePoint <= 0x1F64F) return 'Emoticons';
+            return 'Unicode character';
+        }
+
+        function convertCodePoint() {
+            const input = codeInput.value.trim();
+            if (!input) {
+                charResult.textContent = '';
+                return;
+            }
+
+            let codePoint;
+            try {
+                if (input.toLowerCase().startsWith('u+')) {
+                    codePoint = parseInt(input.slice(2), 16);
+                } else if (input.toLowerCase().startsWith('0x')) {
+                    codePoint = parseInt(input.slice(2), 16);
+                } else if (/^[0-9]+$/.test(input)) {
+                    codePoint = parseInt(input, 10);
+                } else if (/^[0-9a-fA-F]+$/.test(input)) {
+                    codePoint = parseInt(input, 16);
+                } else {
+                    charResult.textContent = 'Invalid input';
+                    return;
+                }
+
+                if (isNaN(codePoint) || codePoint < 0 || codePoint > 0x10FFFF) {
+                    charResult.textContent = 'Invalid code point';
+                    return;
+                }
+
+                charResult.textContent = String.fromCodePoint(codePoint);
+            } catch (e) {
+                charResult.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        function clearText() {
+            textInput.value = '';
+            breakdown.innerHTML = '';
+        }
+
+        // Initialize with example
+        textInput.value = 'Hello 世界 🌍';
+        analyze();
+    </script>
+</body>
+</html>

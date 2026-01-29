@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Case Converter</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .input-panel {
+            margin-bottom: 20px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        textarea, input {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            width: 100%;
+        }
+        textarea { resize: vertical; min-height: 120px; }
+        textarea:focus, input:focus { border-color: #00d4ff; }
+        textarea::placeholder, input::placeholder { color: #555; }
+        .outputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .output-item {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .output-header label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        .output-text {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            word-break: break-word;
+            min-height: 40px;
+            color: #eee;
+        }
+        @media (max-width: 768px) {
+            .outputs { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Text Case Converter</h1>
+    <div class="container">
+        <div class="input-panel">
+            <div class="panel-header">
+                <h2>Input Text</h2>
+                <button class="btn-secondary" onclick="clearInput()">Clear</button>
+            </div>
+            <textarea id="input" placeholder="Type or paste text here..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="outputs">
+            <div class="output-item">
+                <div class="output-header">
+                    <label>UPPERCASE</label>
+                    <button onclick="copyText('upper')">Copy</button>
+                </div>
+                <div class="output-text" id="upper"></div>
+            </div>
+
+            <div class="output-item">
+                <div class="output-header">
+                    <label>lowercase</label>
+                    <button onclick="copyText('lower')">Copy</button>
+                </div>
+                <div class="output-text" id="lower"></div>
+            </div>
+
+            <div class="output-item">
+                <div class="output-header">
+                    <label>Title Case</label>
+                    <button onclick="copyText('title')">Copy</button>
+                </div>
+                <div class="output-text" id="title"></div>
+            </div>
+
+            <div class="output-item">
+                <div class="output-header">
+                    <label>Sentence case</label>
+                    <button onclick="copyText('sentence')">Copy</button>
+                </div>
+                <div class="output-text" id="sentence"></div>
+            </div>
+
+            <div class="output-item">
+                <div class="output-header">
+                    <label>camelCase</label>
+                    <button onclick="copyText('camel')">Copy</button>
+                </div>
+                <div class="output-text" id="camel"></div>
+            </div>
+
+            <div class="output-item">
+                <div class="output-header">
+                    <label>snake_case</label>
+                    <button onclick="copyText('snake')">Copy</button>
+                </div>
+                <div class="output-text" id="snake"></div>
+            </div>
+
+            <div class="output-item">
+                <div class="output-header">
+                    <label>kebab-case</label>
+                    <button onclick="copyText('kebab')">Copy</button>
+                </div>
+                <div class="output-text" id="kebab"></div>
+            </div>
+
+            <div class="output-item">
+                <div class="output-header">
+                    <label>CONSTANT_CASE</label>
+                    <button onclick="copyText('constant')">Copy</button>
+                </div>
+                <div class="output-text" id="constant"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('input');
+        let timeout;
+
+        input.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(convert, 100);
+        });
+
+        function convert() {
+            const text = input.value;
+
+            document.getElementById('upper').textContent = text.toUpperCase();
+            document.getElementById('lower').textContent = text.toLowerCase();
+            document.getElementById('title').textContent = toTitleCase(text);
+            document.getElementById('sentence').textContent = toSentenceCase(text);
+            document.getElementById('camel').textContent = toCamelCase(text);
+            document.getElementById('snake').textContent = toSnakeCase(text);
+            document.getElementById('kebab').textContent = toKebabCase(text);
+            document.getElementById('constant').textContent = toConstantCase(text);
+        }
+
+        function toTitleCase(str) {
+            return str.replace(/\w\S*/g, txt =>
+                txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+            );
+        }
+
+        function toSentenceCase(str) {
+            return str.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
+        }
+
+        function getWords(str) {
+            // Split on spaces, underscores, hyphens, and camelCase boundaries
+            return str
+                .replace(/([a-z])([A-Z])/g, '$1 $2')
+                .replace(/[_-]+/g, ' ')
+                .split(/\s+/)
+                .filter(w => w.length > 0);
+        }
+
+        function toCamelCase(str) {
+            const words = getWords(str);
+            return words.map((w, i) =>
+                i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+            ).join('');
+        }
+
+        function toSnakeCase(str) {
+            return getWords(str).map(w => w.toLowerCase()).join('_');
+        }
+
+        function toKebabCase(str) {
+            return getWords(str).map(w => w.toLowerCase()).join('-');
+        }
+
+        function toConstantCase(str) {
+            return getWords(str).map(w => w.toUpperCase()).join('_');
+        }
+
+        function clearInput() {
+            input.value = '';
+            convert();
+        }
+
+        function copyText(id) {
+            const text = document.getElementById(id).textContent;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = orig, 1500);
+                });
+            }
+        }
+
+        // Initialize with example
+        input.value = 'Hello World Example Text';
+        convert();
+    </script>
+</body>
+</html>
