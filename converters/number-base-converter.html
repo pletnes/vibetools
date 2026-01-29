@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Base Converter</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+        .panel-header span { font-size: 12px; color: #555; }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        input {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 18px;
+            outline: none;
+            width: 100%;
+        }
+        input:focus { border-color: #00d4ff; }
+        input::placeholder { color: #555; }
+        .error { color: #ff6b6b; font-size: 13px; margin-top: 8px; min-height: 20px; }
+        .buttons { display: flex; gap: 8px; }
+        .clear-btn {
+            text-align: center;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Number Base Converter</h1>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Decimal (Base 10)</h2>
+                <div class="buttons">
+                    <button onclick="copyText('decimal')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="decimal" placeholder="Enter decimal number..." spellcheck="false">
+            <div class="error" id="decimalError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Hexadecimal (Base 16)</h2>
+                <div class="buttons">
+                    <button onclick="copyText('hex')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="hex" placeholder="Enter hex (e.g., ff, 0xff)..." spellcheck="false">
+            <div class="error" id="hexError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Binary (Base 2)</h2>
+                <div class="buttons">
+                    <button onclick="copyText('binary')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="binary" placeholder="Enter binary (e.g., 1010)..." spellcheck="false">
+            <div class="error" id="binaryError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Octal (Base 8)</h2>
+                <div class="buttons">
+                    <button onclick="copyText('octal')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="octal" placeholder="Enter octal (e.g., 77)..." spellcheck="false">
+            <div class="error" id="octalError"></div>
+        </div>
+    </div>
+    <div class="clear-btn">
+        <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+    </div>
+
+    <script>
+        const decimal = document.getElementById('decimal');
+        const hex = document.getElementById('hex');
+        const binary = document.getElementById('binary');
+        const octal = document.getElementById('octal');
+
+        const errors = {
+            decimal: document.getElementById('decimalError'),
+            hex: document.getElementById('hexError'),
+            binary: document.getElementById('binaryError'),
+            octal: document.getElementById('octalError')
+        };
+
+        let timeout;
+        let updating = false;
+
+        decimal.addEventListener('input', () => debounce(() => convert('decimal')));
+        hex.addEventListener('input', () => debounce(() => convert('hex')));
+        binary.addEventListener('input', () => debounce(() => convert('binary')));
+        octal.addEventListener('input', () => debounce(() => convert('octal')));
+
+        function debounce(fn) {
+            clearTimeout(timeout);
+            timeout = setTimeout(fn, 100);
+        }
+
+        function clearErrors() {
+            Object.values(errors).forEach(e => e.textContent = '');
+        }
+
+        function convert(source) {
+            if (updating) return;
+            updating = true;
+            clearErrors();
+
+            const input = document.getElementById(source).value.trim().toLowerCase();
+
+            if (!input) {
+                decimal.value = '';
+                hex.value = '';
+                binary.value = '';
+                octal.value = '';
+                updating = false;
+                return;
+            }
+
+            let num;
+            try {
+                switch (source) {
+                    case 'decimal':
+                        num = parseInt(input, 10);
+                        break;
+                    case 'hex':
+                        // Remove 0x prefix if present
+                        num = parseInt(input.replace(/^0x/, ''), 16);
+                        break;
+                    case 'binary':
+                        // Remove 0b prefix if present
+                        num = parseInt(input.replace(/^0b/, ''), 2);
+                        break;
+                    case 'octal':
+                        // Remove 0o prefix if present
+                        num = parseInt(input.replace(/^0o/, ''), 8);
+                        break;
+                }
+
+                if (isNaN(num)) {
+                    errors[source].textContent = 'Invalid number';
+                    updating = false;
+                    return;
+                }
+
+                // Update all other fields
+                if (source !== 'decimal') decimal.value = num.toString(10);
+                if (source !== 'hex') hex.value = num.toString(16).toUpperCase();
+                if (source !== 'binary') binary.value = num.toString(2);
+                if (source !== 'octal') octal.value = num.toString(8);
+
+            } catch (e) {
+                errors[source].textContent = 'Conversion error: ' + e.message;
+            }
+
+            updating = false;
+        }
+
+        function clearAll() {
+            decimal.value = '';
+            hex.value = '';
+            binary.value = '';
+            octal.value = '';
+            clearErrors();
+        }
+
+        function copyText(id) {
+            const el = document.getElementById(id);
+            if (el.value) {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = orig, 1500);
+                });
+            }
+        }
+
+        // Initialize with example
+        decimal.value = '255';
+        convert('decimal');
+    </script>
+</body>
+</html>
