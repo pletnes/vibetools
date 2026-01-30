@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Decoder</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        textarea {
+            width: 100%;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            min-height: 100px;
+            outline: none;
+        }
+        textarea:focus { border-color: #00d4ff; }
+        textarea::placeholder { color: #555; }
+        .error { color: #ff6b6b; font-size: 13px; margin-top: 8px; }
+        .decoded-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .decoded-panel {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .decoded-panel h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .decoded-panel pre {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #eee;
+        }
+        .signature-panel {
+            grid-column: 1 / -1;
+        }
+        .signature-panel pre {
+            color: #888;
+            word-break: break-all;
+        }
+        .claims-info {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .claims-info h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+        .claim-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #262b44;
+        }
+        .claim-row:last-child { border-bottom: none; }
+        .claim-label { color: #888; }
+        .claim-value {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            text-align: right;
+        }
+        .valid { color: #2ecc71; }
+        .expired { color: #ff6b6b; }
+        .warning { color: #f39c12; }
+        .buttons { display: flex; gap: 8px; }
+        @media (max-width: 768px) {
+            .decoded-section { grid-template-columns: 1fr; }
+            .signature-panel { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>JWT Decoder</h1>
+    <div class="container">
+        <div class="input-section">
+            <div class="panel-header">
+                <h2>JWT Token</h2>
+                <div class="buttons">
+                    <button onclick="pasteFromClipboard()">Paste</button>
+                    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+                </div>
+            </div>
+            <textarea id="jwtInput" placeholder="Paste your JWT token here (eyJhbG...)" spellcheck="false"></textarea>
+            <div class="error" id="error"></div>
+        </div>
+
+        <div class="decoded-section">
+            <div class="decoded-panel">
+                <h3>
+                    <span>Header</span>
+                    <button onclick="copyPart('header')">Copy</button>
+                </h3>
+                <pre id="header"></pre>
+            </div>
+            <div class="decoded-panel">
+                <h3>
+                    <span>Payload</span>
+                    <button onclick="copyPart('payload')">Copy</button>
+                </h3>
+                <pre id="payload"></pre>
+            </div>
+            <div class="decoded-panel signature-panel">
+                <h3>
+                    <span>Signature (Base64URL)</span>
+                    <button onclick="copyPart('signature')">Copy</button>
+                </h3>
+                <pre id="signature"></pre>
+            </div>
+        </div>
+
+        <div class="claims-info" id="claimsInfo" style="display: none;">
+            <h3>Token Claims</h3>
+            <div id="claimsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const jwtInput = document.getElementById('jwtInput');
+        const error = document.getElementById('error');
+        const headerEl = document.getElementById('header');
+        const payloadEl = document.getElementById('payload');
+        const signatureEl = document.getElementById('signature');
+        const claimsInfo = document.getElementById('claimsInfo');
+        const claimsList = document.getElementById('claimsList');
+
+        let timeout;
+        let decodedParts = { header: '', payload: '', signature: '' };
+
+        jwtInput.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(decode, 200);
+        });
+
+        function base64UrlDecode(str) {
+            // Convert base64url to base64
+            let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            // Pad with = if needed
+            while (base64.length % 4) base64 += '=';
+            return decodeURIComponent(atob(base64).split('').map(c =>
+                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join(''));
+        }
+
+        function decode() {
+            const token = jwtInput.value.trim();
+            error.textContent = '';
+            headerEl.textContent = '';
+            payloadEl.textContent = '';
+            signatureEl.textContent = '';
+            claimsInfo.style.display = 'none';
+            decodedParts = { header: '', payload: '', signature: '' };
+
+            if (!token) return;
+
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                error.textContent = 'Invalid JWT: Expected 3 parts separated by dots';
+                return;
+            }
+
+            try {
+                // Decode header
+                const header = JSON.parse(base64UrlDecode(parts[0]));
+                decodedParts.header = JSON.stringify(header, null, 2);
+                headerEl.textContent = decodedParts.header;
+
+                // Decode payload
+                const payload = JSON.parse(base64UrlDecode(parts[1]));
+                decodedParts.payload = JSON.stringify(payload, null, 2);
+                payloadEl.textContent = decodedParts.payload;
+
+                // Signature (keep as base64url)
+                decodedParts.signature = parts[2];
+                signatureEl.textContent = parts[2];
+
+                // Show claims info
+                showClaimsInfo(header, payload);
+
+            } catch (e) {
+                error.textContent = 'Error decoding JWT: ' + e.message;
+            }
+        }
+
+        function showClaimsInfo(header, payload) {
+            claimsList.innerHTML = '';
+            const claims = [];
+
+            // Algorithm
+            if (header.alg) {
+                claims.push({ label: 'Algorithm', value: header.alg });
+            }
+            if (header.typ) {
+                claims.push({ label: 'Type', value: header.typ });
+            }
+
+            // Time claims
+            const now = Math.floor(Date.now() / 1000);
+
+            if (payload.iat) {
+                const iatDate = new Date(payload.iat * 1000);
+                claims.push({
+                    label: 'Issued At (iat)',
+                    value: iatDate.toLocaleString(),
+                    class: ''
+                });
+            }
+
+            if (payload.nbf) {
+                const nbfDate = new Date(payload.nbf * 1000);
+                const isValid = now >= payload.nbf;
+                claims.push({
+                    label: 'Not Before (nbf)',
+                    value: nbfDate.toLocaleString(),
+                    class: isValid ? 'valid' : 'warning'
+                });
+            }
+
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                const isExpired = now > payload.exp;
+                const timeLeft = payload.exp - now;
+                let expText = expDate.toLocaleString();
+                if (isExpired) {
+                    expText += ' (EXPIRED)';
+                } else {
+                    expText += ` (${formatTimeLeft(timeLeft)})`;
+                }
+                claims.push({
+                    label: 'Expires (exp)',
+                    value: expText,
+                    class: isExpired ? 'expired' : 'valid'
+                });
+            }
+
+            // Common claims
+            if (payload.sub) claims.push({ label: 'Subject (sub)', value: payload.sub });
+            if (payload.iss) claims.push({ label: 'Issuer (iss)', value: payload.iss });
+            if (payload.aud) claims.push({ label: 'Audience (aud)', value: Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud });
+            if (payload.jti) claims.push({ label: 'JWT ID (jti)', value: payload.jti });
+
+            if (claims.length === 0) {
+                claimsInfo.style.display = 'none';
+                return;
+            }
+
+            claimsInfo.style.display = 'block';
+            claims.forEach(claim => {
+                const row = document.createElement('div');
+                row.className = 'claim-row';
+                row.innerHTML = `
+                    <span class="claim-label">${claim.label}</span>
+                    <span class="claim-value ${claim.class || ''}">${escapeHtml(String(claim.value))}</span>
+                `;
+                claimsList.appendChild(row);
+            });
+        }
+
+        function formatTimeLeft(seconds) {
+            if (seconds < 60) return `${seconds}s left`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m left`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h left`;
+            return `${Math.floor(seconds / 86400)}d left`;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function clearAll() {
+            jwtInput.value = '';
+            error.textContent = '';
+            headerEl.textContent = '';
+            payloadEl.textContent = '';
+            signatureEl.textContent = '';
+            claimsInfo.style.display = 'none';
+            decodedParts = { header: '', payload: '', signature: '' };
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                jwtInput.value = text;
+                decode();
+            } catch (e) {
+                error.textContent = 'Could not read clipboard';
+            }
+        }
+
+        function copyPart(part) {
+            if (decodedParts[part]) {
+                navigator.clipboard.writeText(decodedParts[part]).then(() => {
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = orig, 1500);
+                });
+            }
+        }
+
+        // Example JWT on load
+        const exampleJwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE5MTYyMzkwMjJ9.4S5J5JvV5vV5L5J5JvV5vV5L5J5JvV5vV5L5J5JvV5k';
+        jwtInput.value = exampleJwt;
+        decode();
+    </script>
+</body>
+</html>
