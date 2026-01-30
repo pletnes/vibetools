@@ -26,6 +26,17 @@
             color: #888;
             margin-bottom: 40px;
         }
+        h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 12px;
+            margin-top: 30px;
+        }
+        h2:first-of-type {
+            margin-top: 0;
+        }
         ul {
             list-style: none;
         }
@@ -52,7 +63,9 @@
 <body>
     <div class="container">
         <h1>Vibetools</h1>
-        <p class="tagline">Single-file browser converters. No server, no install.</p>
+        <p class="tagline">Single-file browser tools. No server, no install.</p>
+
+        <h2>Converters</h2>
         <ul>
             <li><a href="converters/json-yaml-converter.html">JSON ↔ YAML</a></li>
             <li><a href="converters/base64-cleartext-converter.html">Base64 ↔ Cleartext</a></li>
@@ -63,6 +76,11 @@
             <li><a href="converters/html-entity-converter.html">HTML Entity Encoder ↔ Decoder</a></li>
             <li><a href="converters/text-case-converter.html">Text Case Converter</a></li>
             <li><a href="converters/unicode-inspector.html">Unicode Code Point Inspector</a></li>
+        </ul>
+
+        <h2>Browser Info</h2>
+        <ul>
+            <li><a href="browser/locale-info.html">Locale & Internationalization</a></li>
         </ul>
     </div>
 </body>
