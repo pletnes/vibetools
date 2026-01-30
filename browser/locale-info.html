@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locale & Internationalization</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d4ff;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .tagline {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00d4ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #262b44;
+        }
+        .row:last-child { border-bottom: none; }
+        .label { color: #888; }
+        .value {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: #eee;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+        .example-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .example-item {
+            background: #1d2a4d;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        .example-item .label {
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .example-item .value {
+            font-size: 16px;
+            text-align: left;
+            max-width: 100%;
+        }
+        .lang-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .lang-tag {
+            background: #1d2a4d;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+        }
+        .lang-tag.primary {
+            background: #00d4ff;
+            color: #1a1a2e;
+        }
+        @media (max-width: 600px) {
+            .example-grid { grid-template-columns: 1fr; }
+            .row { flex-direction: column; gap: 4px; }
+            .value { text-align: left; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Locale & Internationalization</h1>
+        <p class="tagline">Your browser's language and formatting preferences</p>
+
+        <div class="section">
+            <h2>Language Preferences</h2>
+            <div class="row">
+                <span class="label">Primary Language</span>
+                <span class="value" id="primaryLang"></span>
+            </div>
+            <div class="row">
+                <span class="label">All Preferred Languages</span>
+                <div class="lang-list" id="allLangs"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Date & Time</h2>
+            <div class="row">
+                <span class="label">Timezone</span>
+                <span class="value" id="timezone"></span>
+            </div>
+            <div class="row">
+                <span class="label">Timezone Offset</span>
+                <span class="value" id="tzOffset"></span>
+            </div>
+            <div class="row">
+                <span class="label">Calendar System</span>
+                <span class="value" id="calendar"></span>
+            </div>
+            <div class="row">
+                <span class="label">Hour Cycle</span>
+                <span class="value" id="hourCycle"></span>
+            </div>
+            <div class="example-grid" style="margin-top: 15px;">
+                <div class="example-item">
+                    <div class="label">Current Date (long)</div>
+                    <div class="value" id="dateLong"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Current Date (short)</div>
+                    <div class="value" id="dateShort"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Current Time (long)</div>
+                    <div class="value" id="timeLong"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Current Time (short)</div>
+                    <div class="value" id="timeShort"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Weekday</div>
+                    <div class="value" id="weekday"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Relative Time</div>
+                    <div class="value" id="relativeTime"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Number Formatting</h2>
+            <div class="row">
+                <span class="label">Numbering System</span>
+                <span class="value" id="numberingSystem"></span>
+            </div>
+            <div class="example-grid" style="margin-top: 15px;">
+                <div class="example-item">
+                    <div class="label">Large Number (1234567.89)</div>
+                    <div class="value" id="numberLarge"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Percentage (0.8542)</div>
+                    <div class="value" id="numberPercent"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Currency (1234.50)</div>
+                    <div class="value" id="numberCurrency"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Compact (1500000)</div>
+                    <div class="value" id="numberCompact"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Text & Collation</h2>
+            <div class="row">
+                <span class="label">Collation</span>
+                <span class="value" id="collation"></span>
+            </div>
+            <div class="row">
+                <span class="label">Text Direction</span>
+                <span class="value" id="textDirection"></span>
+            </div>
+            <div class="example-grid" style="margin-top: 15px;">
+                <div class="example-item">
+                    <div class="label">List Format (and)</div>
+                    <div class="value" id="listAnd"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">List Format (or)</div>
+                    <div class="value" id="listOr"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Plural (1 item)</div>
+                    <div class="value" id="plural1"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Plural (5 items)</div>
+                    <div class="value" id="plural5"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Display Names</h2>
+            <div class="example-grid">
+                <div class="example-item">
+                    <div class="label">Your Language Name</div>
+                    <div class="value" id="langName"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Region Name</div>
+                    <div class="value" id="regionName"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Currency Name</div>
+                    <div class="value" id="currencyName"></div>
+                </div>
+                <div class="example-item">
+                    <div class="label">Script Name</div>
+                    <div class="value" id="scriptName"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const locale = navigator.language;
+        const now = new Date();
+
+        // Language preferences
+        document.getElementById('primaryLang').textContent = navigator.language;
+        const langList = document.getElementById('allLangs');
+        navigator.languages.forEach((lang, i) => {
+            const tag = document.createElement('span');
+            tag.className = 'lang-tag' + (i === 0 ? ' primary' : '');
+            tag.textContent = lang;
+            langList.appendChild(tag);
+        });
+
+        // Date & Time
+        const dtfOptions = Intl.DateTimeFormat(locale).resolvedOptions();
+        document.getElementById('timezone').textContent = dtfOptions.timeZone;
+        document.getElementById('tzOffset').textContent = `UTC${now.getTimezoneOffset() <= 0 ? '+' : '-'}${String(Math.abs(now.getTimezoneOffset() / 60)).padStart(2, '0')}:${String(Math.abs(now.getTimezoneOffset() % 60)).padStart(2, '0')}`;
+        document.getElementById('calendar').textContent = dtfOptions.calendar;
+        document.getElementById('hourCycle').textContent = dtfOptions.hourCycle || Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions().hourCycle || 'auto';
+
+        document.getElementById('dateLong').textContent = new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(now);
+        document.getElementById('dateShort').textContent = new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(now);
+        document.getElementById('timeLong').textContent = new Intl.DateTimeFormat(locale, { timeStyle: 'long' }).format(now);
+        document.getElementById('timeShort').textContent = new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(now);
+        document.getElementById('weekday').textContent = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(now);
+
+        try {
+            document.getElementById('relativeTime').textContent = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-1, 'day');
+        } catch (e) {
+            document.getElementById('relativeTime').textContent = 'Not supported';
+        }
+
+        // Number formatting
+        const nfOptions = Intl.NumberFormat(locale).resolvedOptions();
+        document.getElementById('numberingSystem').textContent = nfOptions.numberingSystem;
+        document.getElementById('numberLarge').textContent = new Intl.NumberFormat(locale).format(1234567.89);
+        document.getElementById('numberPercent').textContent = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 2 }).format(0.8542);
+
+        // Guess currency from locale region
+        const region = locale.split('-')[1] || 'US';
+        const currencyMap = { US: 'USD', GB: 'GBP', EU: 'EUR', DE: 'EUR', FR: 'EUR', JP: 'JPY', CN: 'CNY', IN: 'INR', AU: 'AUD', CA: 'CAD', NO: 'NOK', SE: 'SEK', DK: 'DKK', CH: 'CHF' };
+        const currency = currencyMap[region] || 'USD';
+        document.getElementById('numberCurrency').textContent = new Intl.NumberFormat(locale, { style: 'currency', currency }).format(1234.50);
+
+        try {
+            document.getElementById('numberCompact').textContent = new Intl.NumberFormat(locale, { notation: 'compact' }).format(1500000);
+        } catch (e) {
+            document.getElementById('numberCompact').textContent = 'Not supported';
+        }
+
+        // Text & Collation
+        const collatorOptions = new Intl.Collator(locale).resolvedOptions();
+        document.getElementById('collation').textContent = collatorOptions.collation;
+
+        // Detect text direction
+        const rtlLocales = ['ar', 'he', 'fa', 'ur'];
+        const baseLang = locale.split('-')[0];
+        document.getElementById('textDirection').textContent = rtlLocales.includes(baseLang) ? 'Right-to-Left (RTL)' : 'Left-to-Right (LTR)';
+
+        try {
+            document.getElementById('listAnd').textContent = new Intl.ListFormat(locale, { type: 'conjunction' }).format(['Apple', 'Banana', 'Cherry']);
+            document.getElementById('listOr').textContent = new Intl.ListFormat(locale, { type: 'disjunction' }).format(['Red', 'Blue', 'Green']);
+        } catch (e) {
+            document.getElementById('listAnd').textContent = 'Not supported';
+            document.getElementById('listOr').textContent = 'Not supported';
+        }
+
+        try {
+            const pr = new Intl.PluralRules(locale);
+            document.getElementById('plural1').textContent = pr.select(1) + ' → "1 item"';
+            document.getElementById('plural5').textContent = pr.select(5) + ' → "5 items"';
+        } catch (e) {
+            document.getElementById('plural1').textContent = 'Not supported';
+            document.getElementById('plural5').textContent = 'Not supported';
+        }
+
+        // Display names
+        try {
+            const dn = new Intl.DisplayNames(locale, { type: 'language' });
+            document.getElementById('langName').textContent = dn.of(locale.split('-')[0]);
+        } catch (e) {
+            document.getElementById('langName').textContent = 'Not supported';
+        }
+
+        try {
+            const dnRegion = new Intl.DisplayNames(locale, { type: 'region' });
+            document.getElementById('regionName').textContent = dnRegion.of(region);
+        } catch (e) {
+            document.getElementById('regionName').textContent = 'Not supported';
+        }
+
+        try {
+            const dnCurrency = new Intl.DisplayNames(locale, { type: 'currency' });
+            document.getElementById('currencyName').textContent = dnCurrency.of(currency);
+        } catch (e) {
+            document.getElementById('currencyName').textContent = 'Not supported';
+        }
+
+        try {
+            const dnScript = new Intl.DisplayNames(locale, { type: 'script' });
+            document.getElementById('scriptName').textContent = dnScript.of('Latn');
+        } catch (e) {
+            document.getElementById('scriptName').textContent = 'Not supported';
+        }
+    </script>
+</body>
+</html>
