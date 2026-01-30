@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROT13 Encoder/Decoder</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+        .note { text-align: center; color: #888; font-size: 14px; margin-bottom: 20px; }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: calc(100vh - 140px);
+        }
+        .panel { flex: 1; display: flex; flex-direction: column; }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        textarea {
+            flex: 1;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+        }
+        textarea:focus { border-color: #00d4ff; }
+        textarea::placeholder { color: #555; }
+        .buttons { display: flex; gap: 8px; }
+        @media (max-width: 768px) {
+            .container { flex-direction: column; height: auto; }
+            .panel { min-height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>ROT13 Encoder ↔ Decoder</h1>
+    <p class="note">ROT13 is symmetric — encoding and decoding are the same operation</p>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Input</h2>
+                <div class="buttons">
+                    <button onclick="copyText('input')">Copy</button>
+                    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+                </div>
+            </div>
+            <textarea id="input" placeholder="Type or paste text here..." spellcheck="false"></textarea>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>ROT13 Output</h2>
+                <div class="buttons">
+                    <button onclick="copyText('output')">Copy</button>
+                    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+                </div>
+            </div>
+            <textarea id="output" placeholder="ROT13 result will appear here..." spellcheck="false"></textarea>
+        </div>
+    </div>
+    <script>
+        const input = document.getElementById('input');
+        const output = document.getElementById('output');
+        let timeout;
+
+        input.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => convert('input'), 100);
+        });
+
+        output.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => convert('output'), 100);
+        });
+
+        function rot13(str) {
+            return str.replace(/[a-zA-Z]/g, char => {
+                const base = char <= 'Z' ? 65 : 97;
+                return String.fromCharCode((char.charCodeAt(0) - base + 13) % 26 + base);
+            });
+        }
+
+        function convert(source) {
+            if (source === 'input') {
+                output.value = rot13(input.value);
+            } else {
+                input.value = rot13(output.value);
+            }
+        }
+
+        function clearAll() {
+            input.value = '';
+            output.value = '';
+        }
+
+        function copyText(id) {
+            const el = document.getElementById(id);
+            if (el.value) {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = orig, 1500);
+                });
+            }
+        }
+
+        input.value = 'Hello World! The quick brown fox jumps over the lazy dog.';
+        convert('input');
+    </script>
+</body>
+</html>
