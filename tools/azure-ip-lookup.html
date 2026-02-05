@@ -33,6 +33,9 @@
         .upload-section input { display: none; }
         .upload-icon { font-size: 48px; margin-bottom: 10px; }
         .upload-text { color: #888; }
+        .upload-link { color: #00d4ff; font-size: 13px; margin-top: 12px; }
+        .upload-link a { color: #00d4ff; }
+        .upload-link a:hover { text-decoration: underline; }
         .file-info { color: #2ecc71; margin-top: 10px; }
 
         /* Cloud badge */
@@ -192,6 +195,9 @@
             <input type="file" id="fileInput" accept=".json">
             <div class="upload-icon">📁</div>
             <div class="upload-text">Click to upload ServiceTags JSON file</div>
+            <div class="upload-link">
+                Get the latest file from <a href="https://www.microsoft.com/en-us/download/details.aspx?id=56519" target="_blank" onclick="event.stopPropagation()">Microsoft Download Center</a>
+            </div>
             <div class="file-info" id="fileInfo"></div>
         </div>
 
