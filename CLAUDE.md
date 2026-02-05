@@ -6,14 +6,18 @@ This file describes the patterns and conventions used in this project, so Claude
 
 ```
 vibetools/
-├── index.html              # Main index, sections map to directories
-├── converters/             # Bidirectional conversion tools
-├── decoders/               # One-way decoding/inspection tools
-├── tools/                  # Interactive utilities (regex, lookups, etc.)
-└── browser/                # Browser introspection tools
+├── CLAUDE.md               # Development guide (this file)
+├── README.md               # Project readme
+├── LICENSE                 # License file
+└── public/                 # Static assets directory
+    ├── index.html          # Main index, sections map to directories
+    ├── converters/         # Bidirectional conversion tools
+    ├── decoders/           # One-way decoding/inspection tools
+    ├── tools/              # Interactive utilities (regex, lookups, etc.)
+    └── browser/            # Browser introspection tools
 ```
 
-**Rule**: Each directory becomes an `<h2>` section in `index.html`. One tool = one line/link.
+**Rule**: Each directory inside `public/` becomes an `<h2>` section in `index.html`. One tool = one line/link.
 
 ## File Conventions
 
@@ -155,7 +159,7 @@ input[type="text"]::placeholder { color: #555; }
 
 ## Tool Patterns
 
-### Bidirectional Converter (converters/)
+### Bidirectional Converter (public/converters/)
 Two panels side by side, typing in either updates the other.
 
 ```
@@ -179,7 +183,7 @@ inputA.addEventListener('input', () => {
 });
 ```
 
-### Decoder/Inspector (decoders/)
+### Decoder/Inspector (public/decoders/)
 Input at top, structured output below. Often with expandable sections.
 
 ```
@@ -264,8 +268,8 @@ input.addEventListener('input', () => {
 
 When adding a new tool:
 
-1. Add the HTML file to the appropriate directory
-2. Add a `<li><a href="...">Tool Name</a></li>` to the matching section in `index.html`
+1. Add the HTML file to the appropriate directory inside `public/`
+2. Add a `<li><a href="...">Tool Name</a></li>` to the matching section in `public/index.html`
 3. If it's a new directory, add a new `<h2>` section
 
 Section order in index.html:
@@ -276,9 +280,9 @@ Section order in index.html:
 
 ## Example: Creating a New Converter
 
-1. Create `converters/foo-bar-converter.html`
+1. Create `public/converters/foo-bar-converter.html`
 2. Use the bidirectional converter pattern
-3. Add to index.html under Converters section
+3. Add to `public/index.html` under Converters section
 4. Include example data on page load
 
 ## Git Workflow
