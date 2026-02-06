@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regex Playground</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 6px; color: #00d4ff; font-weight: 300; }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .subtitle a { color: #00d4ff; text-decoration: none; }
+        .subtitle a:hover { text-decoration: underline; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* Regex input */
+        .regex-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .regex-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: #0f1629;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 0 14px;
+            transition: border-color 0.2s;
+        }
+        .regex-wrapper:focus-within { border-color: #00d4ff; }
+        .regex-wrapper.invalid { border-color: #ff6b6b; }
+        .regex-wrapper.valid { border-color: #2ecc71; }
+        .regex-slash {
+            color: #888;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 18px;
+            user-select: none;
+        }
+        #regexInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 16px;
+            padding: 12px 6px;
+            outline: none;
+        }
+        #regexInput::placeholder { color: #555; }
+        #flagsInput {
+            width: 50px;
+            background: transparent;
+            border: none;
+            color: #00d4ff;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 16px;
+            padding: 12px 0 12px 6px;
+            outline: none;
+        }
+        #flagsInput::placeholder { color: #555; }
+        .regex-status {
+            font-size: 20px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        /* Section header */
+        h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 12px;
+            margin-top: 24px;
+        }
+
+        /* Panels */
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        @media (max-width: 700px) {
+            .panels { grid-template-columns: 1fr; }
+        }
+        .panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .panel-header h2 {
+            margin: 0;
+        }
+        .panel-header .buttons {
+            display: flex;
+            gap: 6px;
+        }
+        textarea {
+            width: 100%;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 14px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+            min-height: 220px;
+        }
+        textarea:focus { border-color: #00d4ff; }
+        textarea::placeholder { color: #555; }
+        textarea.output {
+            background: #0f1629;
+            color: #2ecc71;
+        }
+
+        /* Match count */
+        .match-count {
+            font-size: 13px;
+            color: #888;
+            margin-top: 6px;
+            min-height: 20px;
+        }
+        .match-count span { color: #00d4ff; font-weight: 600; }
+
+        /* Buttons */
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        .btn-warning {
+            background: #f39c12;
+            color: #1a1a2e;
+        }
+        .btn-warning:hover { background: #d68910; }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 1px solid #333;
+            margin: 30px 0 10px;
+        }
+
+        /* File processing */
+        .file-section {
+            margin-top: 10px;
+        }
+        .drop-zone {
+            background: #16213e;
+            border: 2px dashed #333;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .drop-zone:hover { border-color: #00d4ff; }
+        .drop-zone.dragover { border-color: #00d4ff; background: #1d2a4d; }
+        .drop-zone.loaded { border-style: solid; border-color: #2ecc71; }
+        .drop-zone input { display: none; }
+        .drop-icon { font-size: 36px; margin-bottom: 8px; }
+        .drop-text { color: #888; font-size: 14px; }
+        .file-info { color: #2ecc71; margin-top: 10px; font-size: 13px; }
+
+        .file-results {
+            margin-top: 16px;
+            display: none;
+        }
+        .file-results.visible { display: block; }
+        .file-results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .file-results-header h2 { margin: 0; }
+        .file-output {
+            background: #0f1629;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 14px;
+            color: #2ecc71;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .file-match-count {
+            font-size: 13px;
+            color: #888;
+            margin-top: 6px;
+        }
+        .file-match-count span { color: #00d4ff; font-weight: 600; }
+
+        /* Large file warning */
+        .large-file-warning {
+            display: none;
+            background: rgba(243, 156, 18, 0.15);
+            border: 1px solid #f39c12;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 12px;
+            text-align: center;
+        }
+        .large-file-warning.visible { display: block; }
+        .large-file-warning p {
+            color: #f39c12;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        /* Help modal */
+        .help-btn {
+            background: #333;
+            color: #eee;
+            border: 1px solid #555;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 0;
+            line-height: 1;
+        }
+        .help-btn:hover { border-color: #00d4ff; color: #00d4ff; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.visible {
+            display: flex;
+        }
+        .modal {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 28px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal h2 {
+            color: #00d4ff;
+            font-size: 18px;
+            text-transform: none;
+            letter-spacing: 0;
+            margin-bottom: 16px;
+        }
+        .modal p, .modal li {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .modal ul {
+            list-style: disc;
+            padding-left: 20px;
+            margin-bottom: 14px;
+        }
+        .modal code {
+            background: #0f1629;
+            color: #00d4ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+        }
+        .modal h3 {
+            color: #eee;
+            font-size: 15px;
+            margin: 18px 0 8px;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: #333;
+            color: #eee;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .modal-close:hover { background: #444; }
+
+        /* Error display */
+        .regex-error {
+            color: #ff6b6b;
+            font-size: 13px;
+            min-height: 20px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Regex Playground</h1>
+    <div class="subtitle">
+        Native JavaScript regex &middot;
+        <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions" target="_blank">MDN Regex Docs</a>
+        &middot;
+        <button class="help-btn" onclick="toggleHelp()" title="How this works">?</button>
+    </div>
+
+    <div class="container">
+        <!-- Regex input -->
+        <div class="regex-row">
+            <div class="regex-wrapper" id="regexWrapper">
+                <span class="regex-slash">/</span>
+                <input type="text" id="regexInput" placeholder="enter regex pattern" spellcheck="false" autocomplete="off">
+                <span class="regex-slash">/</span>
+                <input type="text" id="flagsInput" placeholder="gi" value="g" spellcheck="false" autocomplete="off">
+            </div>
+            <div class="regex-status" id="regexStatus"></div>
+        </div>
+        <div class="regex-error" id="regexError"></div>
+
+        <!-- Sample data panels -->
+        <div class="panels">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Sample Input</h2>
+                    <div class="buttons">
+                        <button onclick="pasteInput()">Paste</button>
+                        <button class="btn-secondary" onclick="clearInput()">Clear</button>
+                    </div>
+                </div>
+                <textarea id="sampleInput" placeholder="Enter sample text (one item per line)..."></textarea>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Matched Output</h2>
+                    <div class="buttons">
+                        <button onclick="copyOutput()">Copy</button>
+                    </div>
+                </div>
+                <textarea id="sampleOutput" class="output" readonly placeholder="Matching lines will appear here..."></textarea>
+                <div class="match-count" id="matchCount"></div>
+            </div>
+        </div>
+
+        <!-- File processing -->
+        <hr class="divider">
+        <h2>File Processing</h2>
+
+        <div class="file-section">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept=".txt,.log,.csv,.tsv,.json,.xml,.html,.md,.yml,.yaml,.conf,.cfg,.ini,.sh,.py,.js,.ts,.jsx,.tsx,.css,.sql,.rb,.go,.rs,.java,.c,.cpp,.h,.hpp">
+                <div class="drop-icon">Drop file here</div>
+                <div class="drop-text">or click to browse &middot; text files only</div>
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+
+            <div class="large-file-warning" id="largeFileWarning">
+                <p>This file is larger than 1 MB. Processing may take a moment depending on your device.</p>
+                <button class="btn-warning" onclick="processLargeFile()">Continue Processing</button>
+                <button class="btn-secondary" onclick="cancelLargeFile()" style="margin-left:8px;">Cancel</button>
+            </div>
+
+            <div class="file-results" id="fileResults">
+                <div class="file-results-header">
+                    <h2>File Results</h2>
+                    <div class="buttons">
+                        <button onclick="downloadResults()">Download Results</button>
+                        <button class="btn-secondary" onclick="copyFileOutput()">Copy</button>
+                    </div>
+                </div>
+                <div class="file-output" id="fileOutput"></div>
+                <div class="file-match-count" id="fileMatchCount"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help modal -->
+    <div class="modal-overlay" id="helpModal" onclick="if(event.target===this)toggleHelp()">
+        <div class="modal">
+            <button class="modal-close" onclick="toggleHelp()">&times;</button>
+            <h2>How This Works</h2>
+
+            <h3>Grep-Style Matching</h3>
+            <p>The regex is tested against each line of input individually. If a line matches the pattern, the entire line is included in the output. This is the same behavior as the Unix <code>grep</code> command.</p>
+
+            <h3>Regex Engine</h3>
+            <p>This tool uses native JavaScript regular expressions (<code>RegExp</code>). The pattern you enter is passed directly to <code>new RegExp(pattern, flags)</code>. This means:</p>
+            <ul>
+                <li>Backslashes must be single: <code>\d</code>, not <code>\\d</code></li>
+                <li>All JS regex features are supported: lookahead, lookbehind, named groups, unicode, etc.</li>
+                <li>The <code>g</code> (global) flag is set by default but you can change it</li>
+            </ul>
+
+            <h3>Flags</h3>
+            <p>Common flags you can use:</p>
+            <ul>
+                <li><code>g</code> &mdash; Global (find all matches; default)</li>
+                <li><code>i</code> &mdash; Case-insensitive matching</li>
+                <li><code>m</code> &mdash; Multiline (<code>^</code> and <code>$</code> match line boundaries)</li>
+                <li><code>s</code> &mdash; Dotall (<code>.</code> matches newlines)</li>
+                <li><code>u</code> &mdash; Unicode support</li>
+            </ul>
+            <p>Note: For grep-style line matching, the flags affect how each line is tested. The <code>g</code> flag doesn't change which lines match, but is included by default for consistency.</p>
+
+            <h3>Sample Input vs File Processing</h3>
+            <p>Both work identically: the regex is run once per line. The sample input area is for quick testing. The file processing section handles larger files by reading them locally in your browser &mdash; nothing is uploaded to a server.</p>
+
+            <h3>Large Files</h3>
+            <p>Files over 1 MB will prompt a confirmation before processing. The output preview shows the first 1000 matching lines. You can download the full results as a text file.</p>
+
+            <h3>Privacy</h3>
+            <p>Everything runs locally in your browser. No data is sent anywhere.</p>
+        </div>
+    </div>
+
+    <script>
+        const regexInput = document.getElementById('regexInput');
+        const flagsInput = document.getElementById('flagsInput');
+        const regexWrapper = document.getElementById('regexWrapper');
+        const regexStatus = document.getElementById('regexStatus');
+        const regexError = document.getElementById('regexError');
+        const sampleInput = document.getElementById('sampleInput');
+        const sampleOutput = document.getElementById('sampleOutput');
+        const matchCount = document.getElementById('matchCount');
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileResults = document.getElementById('fileResults');
+        const fileOutput = document.getElementById('fileOutput');
+        const fileMatchCount = document.getElementById('fileMatchCount');
+        const largeFileWarning = document.getElementById('largeFileWarning');
+
+        let currentRegex = null;
+        let pendingFileContent = null;
+        let pendingFileName = null;
+        let fileContent = null;
+        let fileResultLines = [];
+        let debounceTimer = null;
+
+        // --- Regex validation ---
+
+        function validateRegex() {
+            const pattern = regexInput.value;
+            const flags = flagsInput.value;
+
+            regexWrapper.classList.remove('valid', 'invalid');
+            regexStatus.textContent = '';
+            regexError.textContent = '';
+            currentRegex = null;
+
+            if (!pattern) {
+                return;
+            }
+
+            try {
+                currentRegex = new RegExp(pattern, flags);
+                regexWrapper.classList.add('valid');
+                regexStatus.textContent = '\u2705';
+            } catch (e) {
+                regexWrapper.classList.add('invalid');
+                regexStatus.textContent = '\u274C';
+                regexError.textContent = e.message;
+                currentRegex = null;
+            }
+        }
+
+        // --- Sample data processing ---
+
+        function processSample() {
+            validateRegex();
+
+            const text = sampleInput.value;
+            if (!currentRegex || !text) {
+                sampleOutput.value = '';
+                matchCount.innerHTML = '';
+                return;
+            }
+
+            const lines = text.split('\n');
+            const matched = [];
+
+            for (const line of lines) {
+                // Reset lastIndex for global regex
+                currentRegex.lastIndex = 0;
+                if (currentRegex.test(line)) {
+                    matched.push(line);
+                }
+            }
+
+            sampleOutput.value = matched.join('\n');
+            matchCount.innerHTML = `<span>${matched.length}</span> of ${lines.length} line${lines.length !== 1 ? 's' : ''} matched`;
+        }
+
+        // --- File processing ---
+
+        function handleFile(file) {
+            if (!file) return;
+
+            const sizeMB = file.size / (1024 * 1024);
+
+            if (sizeMB > 1) {
+                // Store pending file, show warning
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    pendingFileContent = e.target.result;
+                    pendingFileName = file.name;
+                    largeFileWarning.classList.add('visible');
+                    largeFileWarning.querySelector('p').textContent =
+                        `This file is ${sizeMB.toFixed(1)} MB. Processing may take a moment depending on your device.`;
+                    dropZone.classList.add('loaded');
+                    fileInfo.textContent = `Selected: ${file.name} (${sizeMB.toFixed(1)} MB)`;
+                };
+                reader.readAsText(file);
+                return;
+            }
+
+            // Small file: process immediately
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fileContent = e.target.result;
+                dropZone.classList.add('loaded');
+                fileInfo.textContent = `Loaded: ${file.name} (${formatSize(file.size)})`;
+                largeFileWarning.classList.remove('visible');
+                processFile();
+            };
+            reader.readAsText(file);
+        }
+
+        function processLargeFile() {
+            fileContent = pendingFileContent;
+            pendingFileContent = null;
+            largeFileWarning.classList.remove('visible');
+            fileInfo.textContent = `Loaded: ${pendingFileName}`;
+            pendingFileName = null;
+            processFile();
+        }
+
+        function cancelLargeFile() {
+            pendingFileContent = null;
+            pendingFileName = null;
+            largeFileWarning.classList.remove('visible');
+            dropZone.classList.remove('loaded');
+            fileInfo.textContent = '';
+            fileInput.value = '';
+        }
+
+        function processFile() {
+            validateRegex();
+
+            if (!currentRegex || !fileContent) {
+                fileResults.classList.remove('visible');
+                return;
+            }
+
+            const lines = fileContent.split('\n');
+            fileResultLines = [];
+
+            for (const line of lines) {
+                currentRegex.lastIndex = 0;
+                if (currentRegex.test(line)) {
+                    fileResultLines.push(line);
+                }
+            }
+
+            fileResults.classList.add('visible');
+
+            const PREVIEW_LIMIT = 1000;
+            let preview = fileResultLines.slice(0, PREVIEW_LIMIT).map(escapeHtml).join('\n');
+            if (fileResultLines.length > PREVIEW_LIMIT) {
+                preview += '\n\n... (' + (fileResultLines.length - PREVIEW_LIMIT) + ' more lines, download for full results)';
+            }
+            fileOutput.innerHTML = preview || '<span style="color:#888;">No matching lines.</span>';
+            fileMatchCount.innerHTML = `<span>${fileResultLines.length.toLocaleString()}</span> of ${lines.length.toLocaleString()} line${lines.length !== 1 ? 's' : ''} matched`;
+        }
+
+        function downloadResults() {
+            if (fileResultLines.length === 0) return;
+            const blob = new Blob([fileResultLines.join('\n')], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'regex-results.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- UI helpers ---
+
+        function copyOutput() {
+            const text = sampleOutput.value;
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => flashButton(event.target, 'Copied!'));
+        }
+
+        function copyFileOutput() {
+            if (fileResultLines.length === 0) return;
+            navigator.clipboard.writeText(fileResultLines.join('\n')).then(() => flashButton(event.target, 'Copied!'));
+        }
+
+        function pasteInput() {
+            navigator.clipboard.readText().then(text => {
+                sampleInput.value = text;
+                processSample();
+            });
+        }
+
+        function clearInput() {
+            sampleInput.value = '';
+            sampleOutput.value = '';
+            matchCount.innerHTML = '';
+        }
+
+        function flashButton(btn, msg) {
+            const orig = btn.textContent;
+            btn.textContent = msg;
+            setTimeout(() => btn.textContent = orig, 1500);
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function toggleHelp() {
+            const modal = document.getElementById('helpModal');
+            modal.classList.toggle('visible');
+        }
+
+        // --- Event listeners ---
+
+        function debounceProcess() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                processSample();
+                if (fileContent) processFile();
+            }, 150);
+        }
+
+        regexInput.addEventListener('input', debounceProcess);
+        flagsInput.addEventListener('input', debounceProcess);
+        sampleInput.addEventListener('input', debounceProcess);
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        // Close help on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.getElementById('helpModal').classList.remove('visible');
+            }
+        });
+
+        // Load with example data
+        regexInput.value = '\\d{3,}';
+        sampleInput.value = 'Hello world\nOrder 12345 confirmed\nNo numbers here\nInvoice #987 ready\nError code 4001 detected\nJust text';
+        processSample();
+    </script>
+</body>
+</html>
