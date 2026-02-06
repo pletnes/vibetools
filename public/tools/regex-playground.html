@@ -135,6 +135,33 @@
             color: #2ecc71;
         }
 
+        /* Highlighted output panel */
+        .output-display {
+            width: 100%;
+            background: #0f1629;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 14px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 220px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .output-display .line { margin: 0; }
+        .output-display .placeholder { color: #555; }
+        .output-display mark {
+            background: rgba(0, 212, 255, 0.25);
+            color: #00d4ff;
+            border-radius: 2px;
+            padding: 1px 0;
+            border-bottom: 2px solid #00d4ff;
+        }
+
         /* Match count */
         .match-count {
             font-size: 13px;
@@ -211,7 +238,7 @@
             border: 1px solid #333;
             border-radius: 8px;
             padding: 14px;
-            color: #2ecc71;
+            color: #eee;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 14px;
             line-height: 1.5;
@@ -219,6 +246,14 @@
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-all;
+        }
+        .file-output .line { margin: 0; }
+        .file-output mark {
+            background: rgba(0, 212, 255, 0.25);
+            color: #00d4ff;
+            border-radius: 2px;
+            padding: 1px 0;
+            border-bottom: 2px solid #00d4ff;
         }
         .file-match-count {
             font-size: 13px;
@@ -385,7 +420,7 @@
                         <button onclick="copyOutput()">Copy</button>
                     </div>
                 </div>
-                <textarea id="sampleOutput" class="output" readonly placeholder="Matching lines will appear here..."></textarea>
+                <div id="sampleOutput" class="output-display"><span class="placeholder">Matching lines will appear here...</span></div>
                 <div class="match-count" id="matchCount"></div>
             </div>
         </div>
@@ -429,7 +464,7 @@
             <h2>How This Works</h2>
 
             <h3>Grep-Style Matching</h3>
-            <p>The regex is tested against each line of input individually. If a line matches the pattern, the entire line is included in the output. This is the same behavior as the Unix <code>grep</code> command.</p>
+            <p>The regex is tested against each line of input individually. If a line matches the pattern, the entire line is included in the output with <mark>matched portions highlighted</mark>. This is the same behavior as the Unix <code>grep</code> command.</p>
 
             <h3>Regex Engine</h3>
             <p>This tool uses native JavaScript regular expressions (<code>RegExp</code>). The pattern you enter is passed directly to <code>new RegExp(pattern, flags)</code>. This means:</p>
@@ -483,6 +518,7 @@
         let pendingFileName = null;
         let fileContent = null;
         let fileResultLines = [];
+        let sampleResultLines = [];
         let debounceTimer = null;
 
         // --- Regex validation ---
@@ -512,6 +548,33 @@
             }
         }
 
+        // --- Highlight helper ---
+
+        function highlightLine(line, regex) {
+            // Build a global version of the regex for replacement
+            const flags = regex.flags.includes('g') ? regex.flags : regex.flags + 'g';
+            const hlRegex = new RegExp(regex.source, flags);
+            const escaped = escapeHtml(line);
+            // We need to match on the escaped HTML string, but the regex was
+            // written for the raw text. Strategy: find match positions on
+            // raw text, then map them onto the escaped string.
+            const parts = [];
+            let lastIndex = 0;
+            hlRegex.lastIndex = 0;
+            let match;
+            while ((match = hlRegex.exec(line)) !== null) {
+                if (match[0].length === 0) {
+                    hlRegex.lastIndex++;
+                    continue;
+                }
+                parts.push(escapeHtml(line.slice(lastIndex, match.index)));
+                parts.push('<mark>' + escapeHtml(match[0]) + '</mark>');
+                lastIndex = match.index + match[0].length;
+            }
+            parts.push(escapeHtml(line.slice(lastIndex)));
+            return parts.join('');
+        }
+
         // --- Sample data processing ---
 
         function processSample() {
@@ -519,24 +582,30 @@
 
             const text = sampleInput.value;
             if (!currentRegex || !text) {
-                sampleOutput.value = '';
+                sampleOutput.innerHTML = '<span class="placeholder">Matching lines will appear here...</span>';
+                sampleResultLines = [];
                 matchCount.innerHTML = '';
                 return;
             }
 
             const lines = text.split('\n');
-            const matched = [];
+            sampleResultLines = [];
+            const highlightedLines = [];
 
             for (const line of lines) {
-                // Reset lastIndex for global regex
                 currentRegex.lastIndex = 0;
                 if (currentRegex.test(line)) {
-                    matched.push(line);
+                    sampleResultLines.push(line);
+                    highlightedLines.push(highlightLine(line, currentRegex));
                 }
             }
 
-            sampleOutput.value = matched.join('\n');
-            matchCount.innerHTML = `<span>${matched.length}</span> of ${lines.length} line${lines.length !== 1 ? 's' : ''} matched`;
+            if (highlightedLines.length === 0) {
+                sampleOutput.innerHTML = '<span class="placeholder">No matching lines.</span>';
+            } else {
+                sampleOutput.innerHTML = highlightedLines.map(l => '<div class="line">' + l + '</div>').join('');
+            }
+            matchCount.innerHTML = `<span>${sampleResultLines.length}</span> of ${lines.length} line${lines.length !== 1 ? 's' : ''} matched`;
         }
 
         // --- File processing ---
@@ -613,9 +682,10 @@
             fileResults.classList.add('visible');
 
             const PREVIEW_LIMIT = 1000;
-            let preview = fileResultLines.slice(0, PREVIEW_LIMIT).map(escapeHtml).join('\n');
+            const previewLines = fileResultLines.slice(0, PREVIEW_LIMIT);
+            let preview = previewLines.map(l => '<div class="line">' + highlightLine(l, currentRegex) + '</div>').join('');
             if (fileResultLines.length > PREVIEW_LIMIT) {
-                preview += '\n\n... (' + (fileResultLines.length - PREVIEW_LIMIT) + ' more lines, download for full results)';
+                preview += '<div style="color:#888;margin-top:8px;">... (' + (fileResultLines.length - PREVIEW_LIMIT) + ' more lines, download for full results)</div>';
             }
             fileOutput.innerHTML = preview || '<span style="color:#888;">No matching lines.</span>';
             fileMatchCount.innerHTML = `<span>${fileResultLines.length.toLocaleString()}</span> of ${lines.length.toLocaleString()} line${lines.length !== 1 ? 's' : ''} matched`;
@@ -637,9 +707,8 @@
         // --- UI helpers ---
 
         function copyOutput() {
-            const text = sampleOutput.value;
-            if (!text) return;
-            navigator.clipboard.writeText(text).then(() => flashButton(event.target, 'Copied!'));
+            if (sampleResultLines.length === 0) return;
+            navigator.clipboard.writeText(sampleResultLines.join('\n')).then(() => flashButton(event.target, 'Copied!'));
         }
 
         function copyFileOutput() {
@@ -656,7 +725,8 @@
 
         function clearInput() {
             sampleInput.value = '';
-            sampleOutput.value = '';
+            sampleOutput.innerHTML = '<span class="placeholder">Matching lines will appear here...</span>';
+            sampleResultLines = [];
             matchCount.innerHTML = '';
         }
 
