@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMO Number Checksum Validator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            font-weight: 300;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: calc(100vh - 100px);
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .panel-header h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #00a8cc;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #eee;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        textarea {
+            flex: 1;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: #00d4ff;
+        }
+
+        textarea::placeholder {
+            color: #555;
+        }
+
+        .output-area {
+            flex: 1;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-y: auto;
+        }
+
+        .result-line {
+            padding: 2px 0;
+        }
+
+        .result-true {
+            color: #2ecc71;
+        }
+
+        .result-false {
+            color: #ff6b6b;
+        }
+
+        .result-error {
+            color: #f39c12;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .info {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .summary {
+            font-size: 13px;
+            color: #888;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .panel {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>IMO Number Checksum Validator</h1>
+    <p class="info">Validates IMO ship identification numbers. Digits 1-6 are multiplied by weights 7-2, and the last digit of the sum must equal digit 7.</p>
+
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>IMO Numbers (one per line)</h2>
+                <div class="buttons">
+                    <button onclick="pasteInput()">Paste</button>
+                    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+                </div>
+            </div>
+            <textarea
+                id="imoInput"
+                placeholder="Enter IMO numbers, one per line...&#10;&#10;Examples:&#10;IMO 9074729&#10;9074729&#10;1234567"
+                spellcheck="false"
+            ></textarea>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Results</h2>
+                <div class="buttons">
+                    <button onclick="copyResults()">Copy</button>
+                </div>
+            </div>
+            <div class="output-area" id="output"></div>
+            <div class="summary" id="summary"></div>
+        </div>
+    </div>
+
+    <script>
+        const imoInput = document.getElementById('imoInput');
+        const output = document.getElementById('output');
+        const summary = document.getElementById('summary');
+
+        let debounceTimeout;
+
+        imoInput.addEventListener('input', () => {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(validate, 150);
+        });
+
+        function validateIMO(raw) {
+            // Strip "IMO" prefix and whitespace
+            const cleaned = raw.replace(/^imo\s*/i, '').trim();
+
+            if (!/^\d{7}$/.test(cleaned)) {
+                return { valid: null, reason: 'not a 7-digit number' };
+            }
+
+            const digits = cleaned.split('').map(Number);
+            const weights = [7, 6, 5, 4, 3, 2];
+            let sum = 0;
+
+            for (let i = 0; i < 6; i++) {
+                sum += digits[i] * weights[i];
+            }
+
+            const checkDigit = sum % 10;
+            return { valid: checkDigit === digits[6], reason: null };
+        }
+
+        function validate() {
+            const text = imoInput.value.trim();
+            if (!text) {
+                output.innerHTML = '';
+                summary.textContent = '';
+                return;
+            }
+
+            const lines = text.split('\n');
+            let validCount = 0;
+            let invalidCount = 0;
+            let errorCount = 0;
+            const results = [];
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                    results.push('<div class="result-line">&nbsp;</div>');
+                    continue;
+                }
+
+                const result = validateIMO(trimmed);
+
+                if (result.valid === null) {
+                    results.push(`<div class="result-line result-error">invalid — ${escapeHtml(result.reason)}</div>`);
+                    errorCount++;
+                } else if (result.valid) {
+                    results.push('<div class="result-line result-true">true</div>');
+                    validCount++;
+                } else {
+                    results.push('<div class="result-line result-false">false</div>');
+                    invalidCount++;
+                }
+            }
+
+            output.innerHTML = results.join('');
+
+            const parts = [];
+            if (validCount) parts.push(`${validCount} valid`);
+            if (invalidCount) parts.push(`${invalidCount} invalid`);
+            if (errorCount) parts.push(`${errorCount} error${errorCount > 1 ? 's' : ''}`);
+            summary.textContent = parts.join(', ');
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function clearAll() {
+            imoInput.value = '';
+            output.innerHTML = '';
+            summary.textContent = '';
+        }
+
+        function pasteInput() {
+            navigator.clipboard.readText().then(text => {
+                imoInput.value = text;
+                validate();
+            });
+        }
+
+        function copyResults() {
+            const lines = output.querySelectorAll('.result-line');
+            const text = Array.from(lines).map(el => el.textContent.trim() || '').join('\n');
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = orig, 1500);
+                });
+            }
+        }
+
+        // Example data on load
+        imoInput.value = 'IMO 9074729\nIMO 9074728\n1234567';
+        validate();
+    </script>
+</body>
+</html>
