@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Fingerprint Info</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d4ff;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .tagline {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00d4ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #262b44;
+            align-items: flex-start;
+        }
+        .row:last-child { border-bottom: none; }
+        .label { color: #888; flex-shrink: 0; margin-right: 16px; }
+        .value {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: #eee;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+            font-size: 13px;
+        }
+        .value.na { color: #555; }
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+        .tag {
+            background: #1d2a4d;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+        }
+        .canvas-wrap {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 10px;
+        }
+        .canvas-wrap canvas {
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        .canvas-hash {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            color: #888;
+            word-break: break-all;
+        }
+        .bool-true { color: #2ecc71; }
+        .bool-false { color: #ff6b6b; }
+        @media (max-width: 600px) {
+            .row { flex-direction: column; gap: 4px; }
+            .value { text-align: left; max-width: 100%; }
+            .tag-list { justify-content: flex-start; }
+            .canvas-wrap { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Browser Fingerprint Info</h1>
+        <p class="tagline">Common values used for browser fingerprinting, all from plain JavaScript</p>
+
+        <div class="section">
+            <h2>User Agent & Navigator</h2>
+            <div class="row">
+                <span class="label">User Agent</span>
+                <span class="value" id="userAgent"></span>
+            </div>
+            <div class="row">
+                <span class="label">Platform</span>
+                <span class="value" id="platform"></span>
+            </div>
+            <div class="row">
+                <span class="label">Vendor</span>
+                <span class="value" id="vendor"></span>
+            </div>
+            <div class="row">
+                <span class="label">App Name</span>
+                <span class="value" id="appName"></span>
+            </div>
+            <div class="row">
+                <span class="label">App Version</span>
+                <span class="value" id="appVersion"></span>
+            </div>
+            <div class="row">
+                <span class="label">Product</span>
+                <span class="value" id="product"></span>
+            </div>
+            <div class="row">
+                <span class="label">Languages</span>
+                <div class="tag-list" id="languages"></div>
+            </div>
+            <div class="row">
+                <span class="label">Cookie Enabled</span>
+                <span class="value" id="cookieEnabled"></span>
+            </div>
+            <div class="row">
+                <span class="label">Do Not Track</span>
+                <span class="value" id="doNotTrack"></span>
+            </div>
+            <div class="row">
+                <span class="label">Online</span>
+                <span class="value" id="online"></span>
+            </div>
+            <div class="row">
+                <span class="label">PDF Viewer</span>
+                <span class="value" id="pdfViewer"></span>
+            </div>
+            <div class="row">
+                <span class="label">WebDriver</span>
+                <span class="value" id="webdriver"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Hardware</h2>
+            <div class="row">
+                <span class="label">CPU Cores (hardwareConcurrency)</span>
+                <span class="value" id="cpuCores"></span>
+            </div>
+            <div class="row">
+                <span class="label">Device Memory (GB)</span>
+                <span class="value" id="deviceMemory"></span>
+            </div>
+            <div class="row">
+                <span class="label">Max Touch Points</span>
+                <span class="value" id="maxTouchPoints"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Screen & Display</h2>
+            <div class="row">
+                <span class="label">Screen Resolution</span>
+                <span class="value" id="screenRes"></span>
+            </div>
+            <div class="row">
+                <span class="label">Available Screen Size</span>
+                <span class="value" id="availScreenRes"></span>
+            </div>
+            <div class="row">
+                <span class="label">Window Inner Size</span>
+                <span class="value" id="windowInner"></span>
+            </div>
+            <div class="row">
+                <span class="label">Window Outer Size</span>
+                <span class="value" id="windowOuter"></span>
+            </div>
+            <div class="row">
+                <span class="label">Device Pixel Ratio</span>
+                <span class="value" id="dpr"></span>
+            </div>
+            <div class="row">
+                <span class="label">Color Depth</span>
+                <span class="value" id="colorDepth"></span>
+            </div>
+            <div class="row">
+                <span class="label">Pixel Depth</span>
+                <span class="value" id="pixelDepth"></span>
+            </div>
+            <div class="row">
+                <span class="label">Screen Orientation</span>
+                <span class="value" id="orientation"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Timezone & Locale</h2>
+            <div class="row">
+                <span class="label">Timezone</span>
+                <span class="value" id="timezone"></span>
+            </div>
+            <div class="row">
+                <span class="label">Timezone Offset</span>
+                <span class="value" id="tzOffset"></span>
+            </div>
+            <div class="row">
+                <span class="label">Date String Format</span>
+                <span class="value" id="dateFormat"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Connection</h2>
+            <div class="row">
+                <span class="label">Effective Type</span>
+                <span class="value" id="connType"></span>
+            </div>
+            <div class="row">
+                <span class="label">Downlink (Mbps)</span>
+                <span class="value" id="connDownlink"></span>
+            </div>
+            <div class="row">
+                <span class="label">RTT (ms)</span>
+                <span class="value" id="connRtt"></span>
+            </div>
+            <div class="row">
+                <span class="label">Save Data</span>
+                <span class="value" id="connSaveData"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Canvas Fingerprint</h2>
+            <div class="canvas-wrap" id="canvasWrap">
+                <canvas id="canvasFp" width="280" height="60"></canvas>
+                <div class="canvas-hash" id="canvasHash"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>WebGL</h2>
+            <div class="row">
+                <span class="label">Renderer</span>
+                <span class="value" id="glRenderer"></span>
+            </div>
+            <div class="row">
+                <span class="label">Vendor</span>
+                <span class="value" id="glVendor"></span>
+            </div>
+            <div class="row">
+                <span class="label">Unmasked Renderer</span>
+                <span class="value" id="glUnmaskedRenderer"></span>
+            </div>
+            <div class="row">
+                <span class="label">Unmasked Vendor</span>
+                <span class="value" id="glUnmaskedVendor"></span>
+            </div>
+            <div class="row">
+                <span class="label">Max Texture Size</span>
+                <span class="value" id="glMaxTexture"></span>
+            </div>
+            <div class="row">
+                <span class="label">Max Viewport</span>
+                <span class="value" id="glMaxViewport"></span>
+            </div>
+            <div class="row">
+                <span class="label">Extensions</span>
+                <span class="value" id="glExtCount"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Audio</h2>
+            <div class="row">
+                <span class="label">Sample Rate</span>
+                <span class="value" id="audioSampleRate"></span>
+            </div>
+            <div class="row">
+                <span class="label">Max Channel Count</span>
+                <span class="value" id="audioMaxChannels"></span>
+            </div>
+            <div class="row">
+                <span class="label">Output Latency</span>
+                <span class="value" id="audioLatency"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Media Capabilities</h2>
+            <div class="row">
+                <span class="label">Media Devices API</span>
+                <span class="value" id="mediaDevicesApi"></span>
+            </div>
+            <div class="row">
+                <span class="label">Input Devices</span>
+                <span class="value" id="mediaInputs"></span>
+            </div>
+            <div class="row">
+                <span class="label">Output Devices</span>
+                <span class="value" id="mediaOutputs"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Plugins</h2>
+            <div id="pluginsList"></div>
+        </div>
+
+        <div class="section">
+            <h2>Feature Detection</h2>
+            <div class="row">
+                <span class="label">Service Worker</span>
+                <span class="value" id="featSW"></span>
+            </div>
+            <div class="row">
+                <span class="label">Web Workers</span>
+                <span class="value" id="featWorker"></span>
+            </div>
+            <div class="row">
+                <span class="label">WebAssembly</span>
+                <span class="value" id="featWasm"></span>
+            </div>
+            <div class="row">
+                <span class="label">WebGL</span>
+                <span class="value" id="featWebGL"></span>
+            </div>
+            <div class="row">
+                <span class="label">WebGL2</span>
+                <span class="value" id="featWebGL2"></span>
+            </div>
+            <div class="row">
+                <span class="label">WebRTC</span>
+                <span class="value" id="featWebRTC"></span>
+            </div>
+            <div class="row">
+                <span class="label">WebSocket</span>
+                <span class="value" id="featWS"></span>
+            </div>
+            <div class="row">
+                <span class="label">IndexedDB</span>
+                <span class="value" id="featIDB"></span>
+            </div>
+            <div class="row">
+                <span class="label">Local Storage</span>
+                <span class="value" id="featLS"></span>
+            </div>
+            <div class="row">
+                <span class="label">Session Storage</span>
+                <span class="value" id="featSS"></span>
+            </div>
+            <div class="row">
+                <span class="label">Bluetooth API</span>
+                <span class="value" id="featBT"></span>
+            </div>
+            <div class="row">
+                <span class="label">Gamepad API</span>
+                <span class="value" id="featGamepad"></span>
+            </div>
+            <div class="row">
+                <span class="label">Speech Synthesis</span>
+                <span class="value" id="featSpeech"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Math Constants</h2>
+            <div class="row">
+                <span class="label">Math.tan(-1e300)</span>
+                <span class="value" id="mathTan"></span>
+            </div>
+            <div class="row">
+                <span class="label">Math.sinh(1)</span>
+                <span class="value" id="mathSinh"></span>
+            </div>
+            <div class="row">
+                <span class="label">Math.cosh(1)</span>
+                <span class="value" id="mathCosh"></span>
+            </div>
+            <div class="row">
+                <span class="label">Math.expm1(1)</span>
+                <span class="value" id="mathExpm1"></span>
+            </div>
+            <div class="row">
+                <span class="label">Math.log1p(0.5)</span>
+                <span class="value" id="mathLog1p"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setText(id, val) {
+            const el = document.getElementById(id);
+            if (val === undefined || val === null || val === '') {
+                el.textContent = 'N/A';
+                el.classList.add('na');
+            } else {
+                el.textContent = val;
+            }
+        }
+
+        function setBool(id, val) {
+            const el = document.getElementById(id);
+            if (val === undefined || val === null) {
+                el.textContent = 'N/A';
+                el.classList.add('na');
+            } else {
+                el.textContent = String(val);
+                el.classList.add(val ? 'bool-true' : 'bool-false');
+            }
+        }
+
+        function setFeature(id, val) {
+            const el = document.getElementById(id);
+            const supported = !!val;
+            el.textContent = supported ? 'Supported' : 'Not available';
+            el.classList.add(supported ? 'bool-true' : 'bool-false');
+        }
+
+        // --- User Agent & Navigator ---
+        setText('userAgent', navigator.userAgent);
+        setText('platform', navigator.platform);
+        setText('vendor', navigator.vendor);
+        setText('appName', navigator.appName);
+        setText('appVersion', navigator.appVersion);
+        setText('product', navigator.product);
+
+        const langList = document.getElementById('languages');
+        (navigator.languages || [navigator.language]).forEach(lang => {
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.textContent = lang;
+            langList.appendChild(tag);
+        });
+
+        setBool('cookieEnabled', navigator.cookieEnabled);
+        setText('doNotTrack', navigator.doNotTrack || window.doNotTrack || 'unset');
+        setBool('online', navigator.onLine);
+        setBool('pdfViewer', navigator.pdfViewerEnabled);
+        setBool('webdriver', navigator.webdriver);
+
+        // --- Hardware ---
+        setText('cpuCores', navigator.hardwareConcurrency);
+        setText('deviceMemory', navigator.deviceMemory);
+        setText('maxTouchPoints', navigator.maxTouchPoints);
+
+        // --- Screen & Display ---
+        setText('screenRes', screen.width + ' x ' + screen.height);
+        setText('availScreenRes', screen.availWidth + ' x ' + screen.availHeight);
+        setText('windowInner', window.innerWidth + ' x ' + window.innerHeight);
+        setText('windowOuter', window.outerWidth + ' x ' + window.outerHeight);
+        setText('dpr', window.devicePixelRatio);
+        setText('colorDepth', screen.colorDepth + '-bit');
+        setText('pixelDepth', screen.pixelDepth + '-bit');
+        try {
+            setText('orientation', screen.orientation.type + ' (' + screen.orientation.angle + '\u00B0)');
+        } catch (e) {
+            setText('orientation', null);
+        }
+
+        // --- Timezone & Locale ---
+        try {
+            setText('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+        } catch (e) {
+            setText('timezone', null);
+        }
+        const offset = new Date().getTimezoneOffset();
+        const sign = offset <= 0 ? '+' : '-';
+        const hrs = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+        const mins = String(Math.abs(offset) % 60).padStart(2, '0');
+        setText('tzOffset', 'UTC' + sign + hrs + ':' + mins);
+        setText('dateFormat', new Date().toLocaleString());
+
+        // --- Connection ---
+        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (conn) {
+            setText('connType', conn.effectiveType);
+            setText('connDownlink', conn.downlink);
+            setText('connRtt', conn.rtt);
+            setBool('connSaveData', conn.saveData);
+        } else {
+            setText('connType', null);
+            setText('connDownlink', null);
+            setText('connRtt', null);
+            setText('connSaveData', null);
+        }
+
+        // --- Canvas Fingerprint ---
+        (function () {
+            const canvas = document.getElementById('canvasFp');
+            const ctx = canvas.getContext('2d');
+            // Draw a variety of shapes and text to produce a fingerprint
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 280, 60);
+            ctx.fillStyle = '#00d4ff';
+            ctx.font = '18px Arial';
+            ctx.fillText('Fingerprint \u2764', 10, 25);
+            ctx.fillStyle = '#ff6b6b';
+            ctx.font = 'bold 14px Georgia';
+            ctx.fillText('BrowserInfo', 10, 50);
+            ctx.beginPath();
+            ctx.arc(240, 30, 20, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 212, 255, 0.5)';
+            ctx.fill();
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(180, 5);
+            ctx.lineTo(210, 55);
+            ctx.stroke();
+
+            const dataUrl = canvas.toDataURL();
+            // Simple hash of the data URL
+            let hash = 0;
+            for (let i = 0; i < dataUrl.length; i++) {
+                hash = ((hash << 5) - hash + dataUrl.charCodeAt(i)) | 0;
+            }
+            const hexHash = (hash >>> 0).toString(16).padStart(8, '0');
+            document.getElementById('canvasHash').textContent = 'Hash: 0x' + hexHash + '\n(dataURL length: ' + dataUrl.length + ')';
+        })();
+
+        // --- WebGL ---
+        (function () {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) {
+                ['glRenderer', 'glVendor', 'glUnmaskedRenderer', 'glUnmaskedVendor', 'glMaxTexture', 'glMaxViewport', 'glExtCount'].forEach(id => setText(id, null));
+                return;
+            }
+            setText('glRenderer', gl.getParameter(gl.RENDERER));
+            setText('glVendor', gl.getParameter(gl.VENDOR));
+
+            const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+            if (dbg) {
+                setText('glUnmaskedRenderer', gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
+                setText('glUnmaskedVendor', gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL));
+            } else {
+                setText('glUnmaskedRenderer', null);
+                setText('glUnmaskedVendor', null);
+            }
+
+            setText('glMaxTexture', gl.getParameter(gl.MAX_TEXTURE_SIZE));
+            const vp = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+            setText('glMaxViewport', vp ? vp[0] + ' x ' + vp[1] : null);
+
+            const exts = gl.getSupportedExtensions();
+            setText('glExtCount', exts ? exts.length + ' extensions' : null);
+        })();
+
+        // --- Audio ---
+        (function () {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                setText('audioSampleRate', ctx.sampleRate + ' Hz');
+                setText('audioMaxChannels', ctx.destination.maxChannelCount);
+                setText('audioLatency', ctx.outputLatency !== undefined ? ctx.outputLatency.toFixed(4) + ' s' : 'N/A');
+                ctx.close();
+            } catch (e) {
+                setText('audioSampleRate', null);
+                setText('audioMaxChannels', null);
+                setText('audioLatency', null);
+            }
+        })();
+
+        // --- Media Devices ---
+        (function () {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                setFeature('mediaDevicesApi', false);
+                setText('mediaInputs', null);
+                setText('mediaOutputs', null);
+                return;
+            }
+            setFeature('mediaDevicesApi', true);
+            navigator.mediaDevices.enumerateDevices().then(devices => {
+                const inputs = devices.filter(d => d.kind === 'audioinput' || d.kind === 'videoinput').length;
+                const outputs = devices.filter(d => d.kind === 'audiooutput').length;
+                setText('mediaInputs', inputs + ' device(s)');
+                setText('mediaOutputs', outputs + ' device(s)');
+            }).catch(() => {
+                setText('mediaInputs', 'Denied');
+                setText('mediaOutputs', 'Denied');
+            });
+        })();
+
+        // --- Plugins ---
+        (function () {
+            const container = document.getElementById('pluginsList');
+            const plugins = navigator.plugins;
+            if (!plugins || plugins.length === 0) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.innerHTML = '<span class="label">No plugins detected</span><span class="value na">Modern browsers report no plugins</span>';
+                container.appendChild(row);
+                return;
+            }
+            for (let i = 0; i < plugins.length; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.innerHTML = '<span class="label">' + escapeHtml(plugins[i].name) + '</span><span class="value">' + escapeHtml(plugins[i].description || '') + '</span>';
+                container.appendChild(row);
+            }
+        })();
+
+        // --- Feature Detection ---
+        setFeature('featSW', 'serviceWorker' in navigator);
+        setFeature('featWorker', typeof Worker !== 'undefined');
+        setFeature('featWasm', typeof WebAssembly !== 'undefined');
+        setFeature('featWebGL', (function () { try { return !!document.createElement('canvas').getContext('webgl'); } catch (e) { return false; } })());
+        setFeature('featWebGL2', (function () { try { return !!document.createElement('canvas').getContext('webgl2'); } catch (e) { return false; } })());
+        setFeature('featWebRTC', typeof RTCPeerConnection !== 'undefined');
+        setFeature('featWS', typeof WebSocket !== 'undefined');
+        setFeature('featIDB', typeof indexedDB !== 'undefined');
+        setFeature('featLS', (function () { try { return typeof localStorage !== 'undefined'; } catch (e) { return false; } })());
+        setFeature('featSS', (function () { try { return typeof sessionStorage !== 'undefined'; } catch (e) { return false; } })());
+        setFeature('featBT', navigator.bluetooth);
+        setFeature('featGamepad', 'getGamepads' in navigator);
+        setFeature('featSpeech', 'speechSynthesis' in window);
+
+        // --- Math Constants ---
+        setText('mathTan', Math.tan(-1e300).toString());
+        setText('mathSinh', Math.sinh(1).toString());
+        setText('mathCosh', Math.cosh(1).toString());
+        setText('mathExpm1', Math.expm1(1).toString());
+        setText('mathLog1p', Math.log1p(0.5).toString());
+
+        // --- Utility ---
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
