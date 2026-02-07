@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Converter</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+
+        .preview-area {
+            max-width: 1000px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .color-swatch {
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            flex-shrink: 0;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .color-swatch input[type="color"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            border: none;
+            padding: 0;
+        }
+        .pick-hint {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        input[type="text"] {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 18px;
+            outline: none;
+            width: 100%;
+        }
+        input[type="text"]:focus { border-color: #00d4ff; }
+        input[type="text"]::placeholder { color: #555; }
+        .error { color: #ff6b6b; font-size: 13px; margin-top: 8px; min-height: 20px; }
+        .buttons { display: flex; gap: 8px; }
+        .clear-btn {
+            text-align: center;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Color Converter</h1>
+
+    <div class="preview-area">
+        <div class="color-swatch" id="swatch">
+            <input type="color" id="colorPicker" value="#1a8cff">
+        </div>
+        <span class="pick-hint">Click swatch to pick a color</span>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>HEX</h2>
+                <div class="buttons">
+                    <button onclick="copyText('hex')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="hex" placeholder="#rrggbb or #rgb" spellcheck="false">
+            <div class="error" id="hexError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>RGB</h2>
+                <div class="buttons">
+                    <button onclick="copyText('rgb')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="rgb" placeholder="rgb(r, g, b) or r, g, b" spellcheck="false">
+            <div class="error" id="rgbError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>HSL</h2>
+                <div class="buttons">
+                    <button onclick="copyText('hsl')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="hsl" placeholder="hsl(h, s%, l%) or h, s, l" spellcheck="false">
+            <div class="error" id="hslError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>HSV / HSB</h2>
+                <div class="buttons">
+                    <button onclick="copyText('hsv')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="hsv" placeholder="hsv(h, s%, v%) or h, s, v" spellcheck="false">
+            <div class="error" id="hsvError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>CMYK</h2>
+                <div class="buttons">
+                    <button onclick="copyText('cmyk')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="cmyk" placeholder="cmyk(c%, m%, y%, k%) or c, m, y, k" spellcheck="false">
+            <div class="error" id="cmykError"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Named Color</h2>
+                <div class="buttons">
+                    <button onclick="copyText('named')">Copy</button>
+                </div>
+            </div>
+            <input type="text" id="named" placeholder="e.g. red, dodgerblue, coral" spellcheck="false">
+            <div class="error" id="namedError"></div>
+        </div>
+    </div>
+    <div class="clear-btn">
+        <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+    </div>
+
+    <script>
+        const fields = {
+            hex: document.getElementById('hex'),
+            rgb: document.getElementById('rgb'),
+            hsl: document.getElementById('hsl'),
+            hsv: document.getElementById('hsv'),
+            cmyk: document.getElementById('cmyk'),
+            named: document.getElementById('named')
+        };
+
+        const errors = {
+            hex: document.getElementById('hexError'),
+            rgb: document.getElementById('rgbError'),
+            hsl: document.getElementById('hslError'),
+            hsv: document.getElementById('hsvError'),
+            cmyk: document.getElementById('cmykError'),
+            named: document.getElementById('namedError')
+        };
+
+        const swatch = document.getElementById('swatch');
+        const colorPicker = document.getElementById('colorPicker');
+
+        let timeout;
+        let updating = false;
+
+        // CSS named colors lookup
+        const CSS_COLORS = {
+            aliceblue:[240,248,255],antiquewhite:[250,235,215],aqua:[0,255,255],aquamarine:[127,255,212],
+            azure:[240,255,255],beige:[245,245,220],bisque:[255,228,196],black:[0,0,0],
+            blanchedalmond:[255,235,205],blue:[0,0,255],blueviolet:[138,43,226],brown:[165,42,42],
+            burlywood:[222,184,135],cadetblue:[95,158,160],chartreuse:[127,255,0],chocolate:[210,105,30],
+            coral:[255,127,80],cornflowerblue:[100,149,237],cornsilk:[255,248,220],crimson:[220,20,60],
+            cyan:[0,255,255],darkblue:[0,0,139],darkcyan:[0,139,139],darkgoldenrod:[184,134,11],
+            darkgray:[169,169,169],darkgreen:[0,100,0],darkgrey:[169,169,169],darkkhaki:[189,183,107],
+            darkmagenta:[139,0,139],darkolivegreen:[85,107,47],darkorange:[255,140,0],darkorchid:[153,50,204],
+            darkred:[139,0,0],darksalmon:[233,150,122],darkseagreen:[143,188,143],darkslateblue:[72,61,139],
+            darkslategray:[47,79,79],darkslategrey:[47,79,79],darkturquoise:[0,206,209],darkviolet:[148,0,211],
+            deeppink:[255,20,147],deepskyblue:[0,191,255],dimgray:[105,105,105],dimgrey:[105,105,105],
+            dodgerblue:[30,144,255],firebrick:[178,34,34],floralwhite:[255,250,240],forestgreen:[34,139,34],
+            fuchsia:[255,0,255],gainsboro:[220,220,220],ghostwhite:[248,248,255],gold:[255,215,0],
+            goldenrod:[218,165,32],gray:[128,128,128],green:[0,128,0],greenyellow:[173,255,47],
+            grey:[128,128,128],honeydew:[240,255,240],hotpink:[255,105,180],indianred:[205,92,92],
+            indigo:[75,0,130],ivory:[255,255,240],khaki:[240,230,140],lavender:[230,230,250],
+            lavenderblush:[255,240,245],lawngreen:[124,252,0],lemonchiffon:[255,250,205],lightblue:[173,216,230],
+            lightcoral:[240,128,128],lightcyan:[224,255,255],lightgoldenrodyellow:[250,250,210],
+            lightgray:[211,211,211],lightgreen:[144,238,144],lightgrey:[211,211,211],lightpink:[255,182,193],
+            lightsalmon:[255,160,122],lightseagreen:[32,178,170],lightskyblue:[135,206,250],
+            lightslategray:[119,136,153],lightslategrey:[119,136,153],lightsteelblue:[176,196,222],
+            lightyellow:[255,255,224],lime:[0,255,0],limegreen:[50,205,50],linen:[250,240,230],
+            magenta:[255,0,255],maroon:[128,0,0],mediumaquamarine:[102,205,170],mediumblue:[0,0,205],
+            mediumorchid:[186,85,211],mediumpurple:[147,111,219],mediumseagreen:[60,179,113],
+            mediumslateblue:[123,104,238],mediumspringgreen:[0,250,154],mediumturquoise:[72,209,204],
+            mediumvioletred:[199,21,133],midnightblue:[25,25,112],mintcream:[245,255,250],
+            mistyrose:[255,228,225],moccasin:[255,228,181],navajowhite:[255,222,173],navy:[0,0,128],
+            oldlace:[253,245,230],olive:[128,128,0],olivedrab:[107,142,35],orange:[255,165,0],
+            orangered:[255,69,0],orchid:[218,112,214],palegoldenrod:[238,232,170],palegreen:[152,251,152],
+            paleturquoise:[175,238,238],palevioletred:[219,112,147],papayawhip:[255,239,213],
+            peachpuff:[255,218,185],peru:[205,133,63],pink:[255,192,203],plum:[221,160,221],
+            powderblue:[176,224,230],purple:[128,0,128],rebeccapurple:[102,51,153],red:[255,0,0],
+            rosybrown:[188,143,143],royalblue:[65,105,225],saddlebrown:[139,69,19],salmon:[250,128,114],
+            sandybrown:[244,164,96],seagreen:[46,139,87],seashell:[255,245,238],sienna:[160,82,45],
+            silver:[192,192,192],skyblue:[135,206,235],slateblue:[106,90,205],slategray:[112,128,144],
+            slategrey:[112,128,144],snow:[255,250,250],springgreen:[0,255,127],steelblue:[70,130,180],
+            tan:[210,180,140],teal:[0,128,128],thistle:[216,191,216],tomato:[255,99,71],
+            turquoise:[64,224,208],violet:[238,130,238],wheat:[245,222,179],white:[255,255,255],
+            whitesmoke:[245,245,245],yellow:[255,255,0],yellowgreen:[154,205,50]
+        };
+
+        // Reverse lookup: RGB string -> name(s)
+        const RGB_TO_NAME = {};
+        for (const [name, rgb] of Object.entries(CSS_COLORS)) {
+            const key = rgb.join(',');
+            if (!RGB_TO_NAME[key]) RGB_TO_NAME[key] = name;
+        }
+
+        // --- Color conversion functions (all work through RGB) ---
+
+        function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+        function parseHex(str) {
+            str = str.trim().replace(/^#/, '');
+            if (/^[0-9a-f]{3}$/i.test(str)) {
+                str = str[0]+str[0]+str[1]+str[1]+str[2]+str[2];
+            }
+            if (!/^[0-9a-f]{6}$/i.test(str)) return null;
+            return [
+                parseInt(str.slice(0,2), 16),
+                parseInt(str.slice(2,4), 16),
+                parseInt(str.slice(4,6), 16)
+            ];
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+        }
+
+        function parseRgb(str) {
+            str = str.trim();
+            // Match rgb(r, g, b) or just r, g, b
+            const m = str.match(/^(?:rgb\s*\(\s*)?(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*\)?$/i);
+            if (!m) return null;
+            const r = parseInt(m[1]), g = parseInt(m[2]), b = parseInt(m[3]);
+            if (r > 255 || g > 255 || b > 255) return null;
+            return [r, g, b];
+        }
+
+        function formatRgb(r, g, b) {
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // --- HSL ---
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+        }
+
+        function hslToRgb(h, s, l) {
+            h /= 360; s /= 100; l /= 100;
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                function hue2rgb(p, q, t) {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                }
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        function parseHsl(str) {
+            str = str.trim();
+            const m = str.match(/^(?:hsl\s*\(\s*)?(\d{1,3})\s*[,\s]\s*(\d{1,3})%?\s*[,\s]\s*(\d{1,3})%?\s*\)?$/i);
+            if (!m) return null;
+            const h = parseInt(m[1]), s = parseInt(m[2]), l = parseInt(m[3]);
+            if (h > 360 || s > 100 || l > 100) return null;
+            return hslToRgb(h, s, l);
+        }
+
+        function formatHsl(r, g, b) {
+            const [h, s, l] = rgbToHsl(r, g, b);
+            return `hsl(${h}, ${s}%, ${l}%)`;
+        }
+
+        // --- HSV ---
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            const d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) {
+                h = 0;
+            } else {
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [Math.round(h * 360), Math.round(s * 100), Math.round(v * 100)];
+        }
+
+        function hsvToRgb(h, s, v) {
+            h /= 360; s /= 100; v /= 100;
+            let r, g, b;
+            const i = Math.floor(h * 6);
+            const f = h * 6 - i;
+            const p = v * (1 - s);
+            const q = v * (1 - f * s);
+            const t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: r = v; g = t; b = p; break;
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                case 5: r = v; g = p; b = q; break;
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        function parseHsv(str) {
+            str = str.trim();
+            const m = str.match(/^(?:hsv\s*\(\s*|hsb\s*\(\s*)?(\d{1,3})\s*[,\s]\s*(\d{1,3})%?\s*[,\s]\s*(\d{1,3})%?\s*\)?$/i);
+            if (!m) return null;
+            const h = parseInt(m[1]), s = parseInt(m[2]), v = parseInt(m[3]);
+            if (h > 360 || s > 100 || v > 100) return null;
+            return hsvToRgb(h, s, v);
+        }
+
+        function formatHsv(r, g, b) {
+            const [h, s, v] = rgbToHsv(r, g, b);
+            return `hsv(${h}, ${s}%, ${v}%)`;
+        }
+
+        // --- CMYK ---
+        function rgbToCmyk(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const k = 1 - Math.max(r, g, b);
+            if (k === 1) return [0, 0, 0, 100];
+            const c = (1 - r - k) / (1 - k);
+            const m = (1 - g - k) / (1 - k);
+            const y = (1 - b - k) / (1 - k);
+            return [Math.round(c * 100), Math.round(m * 100), Math.round(y * 100), Math.round(k * 100)];
+        }
+
+        function cmykToRgb(c, m, y, k) {
+            c /= 100; m /= 100; y /= 100; k /= 100;
+            return [
+                Math.round(255 * (1 - c) * (1 - k)),
+                Math.round(255 * (1 - m) * (1 - k)),
+                Math.round(255 * (1 - y) * (1 - k))
+            ];
+        }
+
+        function parseCmyk(str) {
+            str = str.trim();
+            const m = str.match(/^(?:cmyk\s*\(\s*)?(\d{1,3})%?\s*[,\s]\s*(\d{1,3})%?\s*[,\s]\s*(\d{1,3})%?\s*[,\s]\s*(\d{1,3})%?\s*\)?$/i);
+            if (!m) return null;
+            const c = parseInt(m[1]), mk = parseInt(m[2]), y = parseInt(m[3]), k = parseInt(m[4]);
+            if (c > 100 || mk > 100 || y > 100 || k > 100) return null;
+            return cmykToRgb(c, mk, y, k);
+        }
+
+        function formatCmyk(r, g, b) {
+            const [c, m, y, k] = rgbToCmyk(r, g, b);
+            return `cmyk(${c}%, ${m}%, ${y}%, ${k}%)`;
+        }
+
+        // --- Named color ---
+        function parseNamed(str) {
+            str = str.trim().toLowerCase();
+            if (CSS_COLORS[str]) return CSS_COLORS[str].slice();
+            return null;
+        }
+
+        function formatNamed(r, g, b) {
+            return RGB_TO_NAME[[r,g,b].join(',')] || '';
+        }
+
+        // --- Main conversion ---
+        const parsers = {
+            hex: parseHex,
+            rgb: parseRgb,
+            hsl: parseHsl,
+            hsv: parseHsv,
+            cmyk: parseCmyk,
+            named: parseNamed
+        };
+
+        const formatters = {
+            hex: (r,g,b) => rgbToHex(r,g,b),
+            rgb: (r,g,b) => formatRgb(r,g,b),
+            hsl: (r,g,b) => formatHsl(r,g,b),
+            hsv: (r,g,b) => formatHsv(r,g,b),
+            cmyk: (r,g,b) => formatCmyk(r,g,b),
+            named: (r,g,b) => formatNamed(r,g,b)
+        };
+
+        function updateSwatch(r, g, b) {
+            const hex = rgbToHex(r, g, b);
+            swatch.style.background = hex;
+            colorPicker.value = hex;
+        }
+
+        function convert(source) {
+            if (updating) return;
+            updating = true;
+            clearErrors();
+
+            const input = fields[source].value.trim();
+
+            if (!input) {
+                for (const key of Object.keys(fields)) {
+                    fields[key].value = '';
+                }
+                swatch.style.background = '#16213e';
+                updating = false;
+                return;
+            }
+
+            const rgb = parsers[source](input);
+            if (!rgb) {
+                errors[source].textContent = 'Invalid ' + source.toUpperCase() + ' value';
+                updating = false;
+                return;
+            }
+
+            const [r, g, b] = rgb;
+            updateSwatch(r, g, b);
+
+            for (const key of Object.keys(fields)) {
+                if (key !== source) {
+                    fields[key].value = formatters[key](r, g, b);
+                }
+            }
+
+            updating = false;
+        }
+
+        // Wire up input listeners
+        for (const key of Object.keys(fields)) {
+            fields[key].addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => convert(key), 100);
+            });
+        }
+
+        // Color picker
+        colorPicker.addEventListener('input', () => {
+            if (updating) return;
+            updating = true;
+            clearErrors();
+            const hex = colorPicker.value;
+            const rgb = parseHex(hex);
+            if (rgb) {
+                const [r, g, b] = rgb;
+                swatch.style.background = hex;
+                for (const key of Object.keys(fields)) {
+                    fields[key].value = formatters[key](r, g, b);
+                }
+            }
+            updating = false;
+        });
+
+        function clearErrors() {
+            Object.values(errors).forEach(e => e.textContent = '');
+        }
+
+        function clearAll() {
+            for (const key of Object.keys(fields)) {
+                fields[key].value = '';
+            }
+            clearErrors();
+            swatch.style.background = '#16213e';
+        }
+
+        function copyText(id) {
+            const el = document.getElementById(id);
+            if (el.value) {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = orig, 1500);
+                });
+            }
+        }
+
+        // Initialize with example color
+        fields.hex.value = '#1a8cff';
+        convert('hex');
+    </script>
+</body>
+</html>
