@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Inspector</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        .input-section { margin-bottom: 20px; }
+        .url-row {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: #eee;
+            font-size: 16px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: #00d4ff; }
+        input[type="text"]::placeholder { color: #555; }
+
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        .btn-check {
+            padding: 14px 28px;
+            font-size: 15px;
+            border-radius: 8px;
+        }
+
+        .examples {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #888;
+        }
+        .examples span { margin-right: 6px; }
+        .examples a {
+            color: #00d4ff;
+            text-decoration: none;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+        .examples a:hover { text-decoration: underline; }
+
+        .status-banner {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            display: none;
+        }
+        .status-banner.cors-yes {
+            display: block;
+            background: rgba(46, 204, 113, 0.15);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+        }
+        .status-banner.cors-no {
+            display: block;
+            background: rgba(255, 107, 107, 0.15);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+        .status-banner.cors-error {
+            display: block;
+            background: rgba(243, 156, 18, 0.15);
+            border: 1px solid #f39c12;
+            color: #f39c12;
+        }
+        .status-subtitle {
+            font-size: 13px;
+            font-weight: 400;
+            margin-top: 6px;
+            opacity: 0.8;
+        }
+
+        .results { display: none; }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .panel h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .check-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #262b44;
+        }
+        .check-row:last-child { border-bottom: none; }
+        .check-label {
+            color: #ccc;
+            font-size: 14px;
+        }
+        .check-label code {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            color: #eee;
+        }
+        .check-value {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+        }
+        .check-pass { color: #2ecc71; }
+        .check-fail { color: #ff6b6b; }
+        .check-warn { color: #f39c12; }
+        .check-info { color: #eee; }
+        .check-muted { color: #888; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-pass { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+        .badge-fail { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+        .badge-skip { background: rgba(136, 136, 136, 0.2); color: #888; }
+
+        .headers-panel {
+            grid-column: 1 / -1;
+        }
+        .header-row {
+            display: flex;
+            padding: 6px 0;
+            border-bottom: 1px solid #262b44;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .header-row:last-child { border-bottom: none; }
+        .header-name {
+            color: #00d4ff;
+            min-width: 280px;
+            flex-shrink: 0;
+        }
+        .header-value {
+            color: #eee;
+            word-break: break-all;
+        }
+        .no-headers {
+            color: #888;
+            font-style: italic;
+            font-size: 13px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-top: 2px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .info-box {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #888;
+        }
+        .info-box strong { color: #ccc; }
+
+        @media (max-width: 768px) {
+            .results-grid { grid-template-columns: 1fr; }
+            .headers-panel { grid-column: 1; }
+            .url-row { flex-direction: column; }
+            .header-name { min-width: 160px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>CORS Inspector</h1>
+    <div class="container">
+        <div class="input-section">
+            <div class="url-row">
+                <input type="text" id="urlInput" placeholder="https://api.example.com/endpoint" spellcheck="false">
+                <button class="btn-check" id="checkBtn" onclick="checkCors()">Check CORS</button>
+            </div>
+            <div class="examples">
+                <span>Try:</span>
+                <a onclick="tryExample('https://api.github.com')">api.github.com</a>
+                <a onclick="tryExample('https://jsonplaceholder.typicode.com/posts/1')">jsonplaceholder</a>
+                <a onclick="tryExample('https://www.google.com')">google.com</a>
+            </div>
+        </div>
+
+        <div id="statusBanner" class="status-banner"></div>
+
+        <div id="results" class="results">
+            <div class="results-grid">
+                <div class="panel" id="requestChecks">
+                    <h3>Request Checks</h3>
+                    <div id="requestChecksList"></div>
+                </div>
+
+                <div class="panel" id="corsDetails">
+                    <h3>CORS Details</h3>
+                    <div id="corsDetailsList"></div>
+                </div>
+
+                <div class="panel headers-panel" id="headersPanel">
+                    <h3>Response Headers</h3>
+                    <div id="headersList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <strong>What is CORS?</strong> Cross-Origin Resource Sharing controls whether JavaScript
+            running on one domain can fetch data from APIs on other domains. APIs with open CORS headers
+            can be called directly from browser-based tools without a proxy server.
+            This tool makes real <code>fetch()</code> requests from your browser to test accessibility.
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const statusBanner = document.getElementById('statusBanner');
+        const results = document.getElementById('results');
+        const requestChecksList = document.getElementById('requestChecksList');
+        const corsDetailsList = document.getElementById('corsDetailsList');
+        const headersList = document.getElementById('headersList');
+
+        urlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkCors();
+        });
+
+        function tryExample(url) {
+            urlInput.value = url;
+            checkCors();
+        }
+
+        function normalizeUrl(url) {
+            url = url.trim();
+            if (!url) return null;
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+            try {
+                return new URL(url).href;
+            } catch {
+                return null;
+            }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        async function checkCors() {
+            const url = normalizeUrl(urlInput.value);
+            if (!url) {
+                showStatus('error', 'Invalid URL', 'Please enter a valid URL');
+                results.style.display = 'none';
+                return;
+            }
+
+            urlInput.value = url;
+            checkBtn.disabled = true;
+            checkBtn.innerHTML = '<span class="spinner"></span>Checking...';
+            statusBanner.className = 'status-banner';
+            statusBanner.style.display = 'none';
+            results.style.display = 'none';
+
+            const checks = {
+                get: null,
+                head: null,
+                options: null,
+                credentials: null,
+            };
+
+            // Run all checks
+            try {
+                // 1. Simple GET with mode: cors
+                checks.get = await testRequest(url, { method: 'GET', mode: 'cors' });
+
+                // 2. HEAD request
+                checks.head = await testRequest(url, { method: 'HEAD', mode: 'cors' });
+
+                // 3. OPTIONS (preflight simulation)
+                checks.options = await testRequest(url, { method: 'OPTIONS', mode: 'cors' });
+
+                // 4. Credentials check
+                checks.credentials = await testRequest(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include'
+                });
+
+            } catch (e) {
+                // Catch any unexpected errors
+            }
+
+            // Determine overall CORS status
+            const corsAvailable = checks.get && checks.get.ok;
+
+            if (corsAvailable) {
+                showStatus('yes',
+                    'CORS is available',
+                    `This API can be fetched from browser JavaScript on any origin`
+                );
+            } else if (checks.get && checks.get.error) {
+                const isNetworkError = checks.get.errorMessage &&
+                    (checks.get.errorMessage.includes('NetworkError') ||
+                     checks.get.errorMessage.includes('Failed to fetch') ||
+                     checks.get.errorMessage.includes('Load failed'));
+                if (isNetworkError) {
+                    showStatus('no',
+                        'CORS is blocked',
+                        'The server does not include CORS headers, or the request was blocked by the browser'
+                    );
+                } else {
+                    showStatus('error',
+                        'Request failed',
+                        checks.get.errorMessage || 'Unknown error'
+                    );
+                }
+            } else if (checks.get && !checks.get.error && checks.get.status >= 400) {
+                showStatus('yes',
+                    `CORS is available (HTTP ${checks.get.status})`,
+                    'The server allows cross-origin requests, though the endpoint returned an error status'
+                );
+            } else {
+                showStatus('error',
+                    'Could not determine CORS status',
+                    'The request did not complete as expected'
+                );
+            }
+
+            // Render results
+            renderRequestChecks(checks);
+            renderCorsDetails(checks);
+            renderHeaders(checks.get);
+            results.style.display = 'block';
+
+            checkBtn.disabled = false;
+            checkBtn.textContent = 'Check CORS';
+        }
+
+        async function testRequest(url, options) {
+            const result = {
+                method: options.method,
+                ok: false,
+                status: null,
+                statusText: '',
+                type: '',
+                headers: {},
+                error: false,
+                errorMessage: '',
+                redirected: false,
+                url: '',
+            };
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                });
+                clearTimeout(timeoutId);
+
+                result.ok = true;
+                result.status = response.status;
+                result.statusText = response.statusText;
+                result.type = response.type;
+                result.redirected = response.redirected;
+                result.url = response.url;
+
+                // Collect all readable headers
+                response.headers.forEach((value, name) => {
+                    result.headers[name] = value;
+                });
+
+            } catch (e) {
+                result.error = true;
+                result.errorMessage = e.message || String(e);
+                if (e.name === 'AbortError') {
+                    result.errorMessage = 'Request timed out (15s)';
+                }
+            }
+
+            return result;
+        }
+
+        function showStatus(type, title, subtitle) {
+            statusBanner.className = 'status-banner cors-' + type;
+            statusBanner.innerHTML = escapeHtml(title) +
+                (subtitle ? `<div class="status-subtitle">${escapeHtml(subtitle)}</div>` : '');
+        }
+
+        function badge(type, label) {
+            return `<span class="badge badge-${type}">${escapeHtml(label)}</span>`;
+        }
+
+        function renderRequestChecks(checks) {
+            let html = '';
+
+            // GET check
+            html += renderCheckRow('GET request', checks.get);
+            html += renderCheckRow('HEAD request', checks.head);
+            html += renderCheckRow('OPTIONS request', checks.options);
+            html += renderCheckRow('With credentials', checks.credentials);
+
+            requestChecksList.innerHTML = html;
+        }
+
+        function renderCheckRow(label, result) {
+            let value;
+            if (!result) {
+                value = badge('skip', 'skipped');
+            } else if (result.error) {
+                value = badge('fail', 'blocked');
+            } else {
+                value = badge('pass', `${result.status} ${result.statusText}`);
+            }
+
+            return `<div class="check-row">
+                <span class="check-label">${escapeHtml(label)}</span>
+                <span class="check-value">${value}</span>
+            </div>`;
+        }
+
+        function renderCorsDetails(checks) {
+            let html = '';
+            const get = checks.get;
+
+            if (!get || get.error) {
+                html += `<div class="check-row">
+                    <span class="check-label">Status</span>
+                    <span class="check-value check-fail">No CORS access</span>
+                </div>`;
+                html += `<div class="check-row">
+                    <span class="check-label">Response type</span>
+                    <span class="check-value check-muted">opaque / blocked</span>
+                </div>`;
+                corsDetailsList.innerHTML = html;
+                return;
+            }
+
+            // Response type
+            html += `<div class="check-row">
+                <span class="check-label">Response type</span>
+                <span class="check-value check-info">${escapeHtml(get.type)}</span>
+            </div>`;
+
+            // Redirected
+            if (get.redirected) {
+                html += `<div class="check-row">
+                    <span class="check-label">Redirected</span>
+                    <span class="check-value check-warn">Yes</span>
+                </div>`;
+                if (get.url && get.url !== urlInput.value) {
+                    html += `<div class="check-row">
+                        <span class="check-label">Final URL</span>
+                        <span class="check-value check-info">${escapeHtml(get.url)}</span>
+                    </div>`;
+                }
+            }
+
+            // CORS-specific headers
+            const corsHeaders = [
+                'access-control-allow-origin',
+                'access-control-allow-methods',
+                'access-control-allow-headers',
+                'access-control-allow-credentials',
+                'access-control-expose-headers',
+                'access-control-max-age',
+            ];
+
+            // Check from all responses (OPTIONS may have more)
+            const allHeaders = {};
+            for (const key of Object.keys(checks)) {
+                const r = checks[key];
+                if (r && !r.error) {
+                    for (const [name, value] of Object.entries(r.headers)) {
+                        if (corsHeaders.includes(name.toLowerCase())) {
+                            allHeaders[name.toLowerCase()] = value;
+                        }
+                    }
+                }
+            }
+
+            const headerLabels = {
+                'access-control-allow-origin': 'Allow-Origin',
+                'access-control-allow-methods': 'Allow-Methods',
+                'access-control-allow-headers': 'Allow-Headers',
+                'access-control-allow-credentials': 'Allow-Credentials',
+                'access-control-expose-headers': 'Expose-Headers',
+                'access-control-max-age': 'Max-Age',
+            };
+
+            if (Object.keys(allHeaders).length > 0) {
+                for (const [name, value] of Object.entries(allHeaders)) {
+                    const label = headerLabels[name] || name;
+                    const isWildcard = value === '*';
+                    html += `<div class="check-row">
+                        <span class="check-label"><code>${escapeHtml(label)}</code></span>
+                        <span class="check-value ${isWildcard ? 'check-pass' : 'check-info'}">${escapeHtml(value)}</span>
+                    </div>`;
+                }
+            } else {
+                html += `<div class="check-row">
+                    <span class="check-label">CORS headers</span>
+                    <span class="check-value check-muted">Not exposed to JS</span>
+                </div>`;
+                html += `<div class="check-row">
+                    <span class="check-label" style="font-size:12px; color:#666">CORS headers may be present but not readable from JavaScript unless exposed by the server</span>
+                    <span class="check-value"></span>
+                </div>`;
+            }
+
+            // Credentials support
+            const credResult = checks.credentials;
+            if (credResult && !credResult.error) {
+                const credHeader = allHeaders['access-control-allow-credentials'];
+                html += `<div class="check-row">
+                    <span class="check-label">Credentials</span>
+                    <span class="check-value ${credHeader === 'true' ? 'check-pass' : 'check-info'}">
+                        ${credHeader === 'true' ? 'Supported' : 'Allowed (no explicit header)'}
+                    </span>
+                </div>`;
+            } else if (credResult && credResult.error) {
+                html += `<div class="check-row">
+                    <span class="check-label">Credentials</span>
+                    <span class="check-value check-fail">Blocked with credentials</span>
+                </div>`;
+            }
+
+            corsDetailsList.innerHTML = html;
+        }
+
+        function renderHeaders(result) {
+            if (!result || result.error) {
+                headersList.innerHTML = '<div class="no-headers">No headers available (request was blocked)</div>';
+                return;
+            }
+
+            const entries = Object.entries(result.headers);
+            if (entries.length === 0) {
+                headersList.innerHTML = '<div class="no-headers">No headers exposed by the server</div>';
+                return;
+            }
+
+            let html = '';
+            // Sort headers alphabetically
+            entries.sort((a, b) => a[0].localeCompare(b[0]));
+            for (const [name, value] of entries) {
+                const isCors = name.toLowerCase().startsWith('access-control');
+                html += `<div class="header-row">
+                    <span class="header-name" ${isCors ? 'style="color: #2ecc71;"' : ''}>${escapeHtml(name)}</span>
+                    <span class="header-value">${escapeHtml(value)}</span>
+                </div>`;
+            }
+            headersList.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
