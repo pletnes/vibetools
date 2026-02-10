@@ -316,7 +316,10 @@
             try {
                 const bundles = duckdb.getJsDelivrBundles();
                 const bundle = await duckdb.selectBundle(bundles);
-                const worker = new Worker(bundle.mainWorker);
+                const workerUrl = URL.createObjectURL(
+                    new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'application/javascript'})
+                );
+                const worker = new Worker(workerUrl);
                 const logger = new duckdb.ConsoleLogger();
                 db = new duckdb.AsyncDuckDB(logger, worker);
                 await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
