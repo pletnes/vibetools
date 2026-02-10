@@ -326,19 +326,27 @@
 # │ │ │ │ │
 # * * * * *</pre>
                 <table>
-                    <tr><th>Symbol</th><th>Meaning</th><th>Example</th></tr>
-                    <tr><td>*</td><td>Any value</td><td>* in hour = every hour</td></tr>
-                    <tr><td>,</td><td>List</td><td>1,3,5 in day = 1st, 3rd, 5th</td></tr>
-                    <tr><td>-</td><td>Range</td><td>1-5 in dow = Mon through Fri</td></tr>
-                    <tr><td>/</td><td>Step</td><td>*/15 in min = every 15 minutes</td></tr>
+                    <thead>
+                        <tr><th>Symbol</th><th>Meaning</th><th>Example</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>*</td><td>Any value</td><td>* in hour = every hour</td></tr>
+                        <tr><td>,</td><td>List</td><td>1,3,5 in day = 1st, 3rd, 5th</td></tr>
+                        <tr><td>-</td><td>Range</td><td>1-5 in dow = Mon through Fri</td></tr>
+                        <tr><td>/</td><td>Step</td><td>*/15 in min = every 15 minutes</td></tr>
+                    </tbody>
                 </table>
                 <table style="margin-top: 16px;">
-                    <tr><th>Macro</th><th>Equivalent</th><th>Meaning</th></tr>
-                    <tr><td>@yearly</td><td>0 0 1 1 *</td><td>Once a year (Jan 1)</td></tr>
-                    <tr><td>@monthly</td><td>0 0 1 * *</td><td>Once a month (1st)</td></tr>
-                    <tr><td>@weekly</td><td>0 0 * * 0</td><td>Once a week (Sunday)</td></tr>
-                    <tr><td>@daily</td><td>0 0 * * *</td><td>Once a day (midnight)</td></tr>
-                    <tr><td>@hourly</td><td>0 * * * *</td><td>Once an hour (:00)</td></tr>
+                    <thead>
+                        <tr><th>Macro</th><th>Equivalent</th><th>Meaning</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>@yearly</td><td>0 0 1 1 *</td><td>Once a year (Jan 1)</td></tr>
+                        <tr><td>@monthly</td><td>0 0 1 * *</td><td>Once a month (1st)</td></tr>
+                        <tr><td>@weekly</td><td>0 0 * * 0</td><td>Once a week (Sunday)</td></tr>
+                        <tr><td>@daily</td><td>0 0 * * *</td><td>Once a day (midnight)</td></tr>
+                        <tr><td>@hourly</td><td>0 * * * *</td><td>Once an hour (:00)</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
