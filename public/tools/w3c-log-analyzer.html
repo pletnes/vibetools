@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W3C Log Analyzer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 6px; color: #00d4ff; font-weight: 300; }
+        .subtitle { text-align: center; color: #888; font-size: 14px; margin-bottom: 24px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        /* Drop Zone */
+        .drop-zone {
+            background: #16213e;
+            border: 2px dashed #333;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            position: relative;
+        }
+        .drop-zone:hover { border-color: #00d4ff; }
+        .drop-zone.dragover { border-color: #00d4ff; background: #1d2a4d; }
+        .drop-zone.loaded { border-style: solid; border-color: #2ecc71; }
+        .drop-zone input[type="file"] { display: none; }
+        .drop-icon { font-size: 16px; color: #888; margin-bottom: 4px; }
+        .drop-text { font-size: 13px; color: #555; }
+
+        .progress-bar {
+            display: none;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .progress-bar.visible { display: block; }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #00d4ff;
+            transition: width 0.3s ease;
+        }
+
+        .file-info {
+            margin-top: 12px;
+            font-size: 13px;
+            color: #888;
+            display: none;
+        }
+        .file-info.visible { display: block; }
+        .file-info .filename { color: #eee; font-weight: 600; }
+        .file-info .stats { margin-top: 4px; }
+        .file-info .stats span { color: #00d4ff; font-weight: 600; }
+
+        .columns-list {
+            margin-top: 10px;
+            display: none;
+            text-align: left;
+        }
+        .columns-list.visible { display: block; }
+        .columns-list .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        .columns-list .cols {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .columns-list code {
+            background: #0f1629;
+            color: #00d4ff;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+        }
+
+        .error { color: #ff6b6b; font-size: 13px; margin-top: 8px; min-height: 20px; }
+
+        /* Query Section */
+        .query-section { margin-top: 20px; }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        .buttons { display: flex; gap: 8px; }
+
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button:disabled:hover { background: #00d4ff; }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        .btn-secondary:disabled:hover { background: #333; }
+
+        textarea {
+            width: 100%;
+            background: #0f1629;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            min-height: 140px;
+        }
+        textarea:focus { border-color: #00d4ff; }
+        textarea::placeholder { color: #555; }
+
+        .query-hint {
+            font-size: 12px;
+            color: #555;
+            margin-top: 8px;
+        }
+        .query-hint code {
+            background: #0f1629;
+            color: #00d4ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+
+        /* Results Section */
+        .results-section {
+            margin-top: 20px;
+            display: none;
+        }
+        .results-section.visible { display: block; }
+        .results-meta { font-size: 13px; color: #888; }
+        .results-meta span { color: #00d4ff; font-weight: 600; }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+        }
+        thead th {
+            background: #0f1629;
+            color: #888;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            padding: 10px 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            border-bottom: 1px solid #333;
+            white-space: nowrap;
+        }
+        tbody td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #222;
+            white-space: nowrap;
+            color: #eee;
+        }
+        tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+        tbody tr:hover { background: #1d2a4d; }
+        td.null-val { color: #555; font-style: italic; }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #333;
+            border-top: 2px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-msg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #888;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>W3C Log Analyzer</h1>
+    <p class="subtitle">Drop a W3C Extended Log file, then query it with SQL via DuckDB</p>
+
+    <div class="container">
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+            <input type="file" id="fileInput" accept=".log,.txt,.w3c,.csv">
+            <div class="drop-icon" id="dropIcon">
+                <div class="loading-msg"><span class="spinner"></span> Initializing DuckDB...</div>
+            </div>
+            <div class="drop-text" id="dropText"></div>
+            <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="file-info" id="fileInfo">
+                <div class="filename" id="fileName"></div>
+                <div class="stats" id="fileStats"></div>
+            </div>
+            <div class="columns-list" id="columnsList">
+                <div class="label">Available columns</div>
+                <div class="cols" id="colsTags"></div>
+            </div>
+        </div>
+        <div class="error" id="fileError"></div>
+
+        <!-- SQL Query -->
+        <div class="query-section">
+            <div class="panel-header">
+                <h2>SQL Query</h2>
+                <div class="buttons">
+                    <button id="runBtn" disabled>Run</button>
+                    <button class="btn-secondary" id="resetBtn" disabled>Reset</button>
+                </div>
+            </div>
+            <textarea id="queryInput" spellcheck="false" placeholder="Load a log file first..."></textarea>
+            <div class="query-hint">Press Ctrl+Enter to run &middot; Table name: <code>logs</code></div>
+            <div class="error" id="queryError"></div>
+        </div>
+
+        <!-- Results -->
+        <div class="results-section" id="resultsSection">
+            <div class="panel-header">
+                <h2>Results</h2>
+                <div class="results-meta" id="resultsMeta"></div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead id="resultsHead"></thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm';
+
+        // --- State ---
+        let db = null;
+        let conn = null;
+        let currentSqlNames = [];
+        let defaultQuery = '';
+
+        // --- DOM refs ---
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const dropIcon = document.getElementById('dropIcon');
+        const dropText = document.getElementById('dropText');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileStats = document.getElementById('fileStats');
+        const columnsList = document.getElementById('columnsList');
+        const colsTags = document.getElementById('colsTags');
+        const fileError = document.getElementById('fileError');
+        const runBtn = document.getElementById('runBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const queryInput = document.getElementById('queryInput');
+        const queryError = document.getElementById('queryError');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsMeta = document.getElementById('resultsMeta');
+        const resultsHead = document.getElementById('resultsHead');
+        const resultsBody = document.getElementById('resultsBody');
+
+        // --- DuckDB Init ---
+        async function initDuckDB() {
+            try {
+                const bundles = duckdb.getJsDelivrBundles();
+                const bundle = await duckdb.selectBundle(bundles);
+                const worker = new Worker(bundle.mainWorker);
+                const logger = new duckdb.ConsoleLogger();
+                db = new duckdb.AsyncDuckDB(logger, worker);
+                await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+                conn = await db.connect();
+                dropIcon.textContent = 'Drop W3C log file here';
+                dropText.textContent = 'or click to browse';
+                dropZone.style.cursor = 'pointer';
+            } catch (err) {
+                dropIcon.textContent = 'Failed to initialize DuckDB';
+                dropText.textContent = err.message;
+                dropZone.style.cursor = 'not-allowed';
+                console.error('DuckDB init error:', err);
+            }
+        }
+
+        initDuckDB();
+
+        // --- File Handling ---
+        dropZone.addEventListener('click', () => {
+            if (db) fileInput.click();
+        });
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (db) dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (!db) return;
+            const file = e.dataTransfer.files[0];
+            if (file) ingestFile(file);
+        });
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file) ingestFile(file);
+            fileInput.value = '';
+        });
+
+        // --- W3C Parsing ---
+        function toSqlName(field) {
+            return field
+                .replace(/[()]/g, '_')
+                .replace(/-/g, '_')
+                .replace(/__+/g, '_')
+                .replace(/^_|_$/g, '');
+        }
+
+        function parseW3C(text) {
+            const lines = text.split('\n');
+            let fieldsLine = null;
+            const dataLines = [];
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed === '') continue;
+                if (trimmed.startsWith('#Fields:')) {
+                    fieldsLine = trimmed;
+                } else if (trimmed.startsWith('#')) {
+                    continue;
+                } else {
+                    dataLines.push(trimmed);
+                }
+            }
+
+            if (!fieldsLine) {
+                throw new Error('No #Fields directive found. Is this a W3C Extended Log Format file?');
+            }
+
+            const originalNames = fieldsLine.replace(/^#Fields:\s*/, '').split(/\s+/);
+            const sqlNames = originalNames.map(toSqlName);
+
+            // Deduplicate sql names (append _N if collision)
+            const seen = {};
+            const dedupedSqlNames = sqlNames.map(name => {
+                if (seen[name] === undefined) {
+                    seen[name] = 0;
+                    return name;
+                }
+                seen[name]++;
+                return name + '_' + seen[name];
+            });
+
+            const header = dedupedSqlNames.join('\t');
+            // Convert space-delimited data to tab-delimited to avoid issues with
+            // fields that may have multiple spaces. We split on whitespace and rejoin with tabs.
+            const tsvLines = dataLines.map(line => line.split(/\s+/).join('\t'));
+            const cleanedData = header + '\n' + tsvLines.join('\n');
+
+            return { sqlNames: dedupedSqlNames, originalNames, cleanedData };
+        }
+
+        // --- Ingestion ---
+        async function ingestFile(file) {
+            fileError.textContent = '';
+            queryError.textContent = '';
+            runBtn.disabled = true;
+            resetBtn.disabled = true;
+            resultsSection.classList.remove('visible');
+            dropZone.classList.remove('loaded');
+            fileInfo.classList.remove('visible');
+            columnsList.classList.remove('visible');
+
+            // Show progress
+            progressBar.classList.add('visible');
+            progressFill.style.width = '0%';
+            dropIcon.innerHTML = '<div class="loading-msg"><span class="spinner"></span> Reading file...</div>';
+            dropText.textContent = '';
+
+            try {
+                // Stream-read the file for progress reporting
+                let text = '';
+                if (file.stream) {
+                    const reader = file.stream().getReader();
+                    const decoder = new TextDecoder();
+                    let bytesRead = 0;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        text += decoder.decode(value, { stream: true });
+                        bytesRead += value.length;
+                        progressFill.style.width = Math.round((bytesRead / file.size) * 60) + '%';
+                    }
+                    text += decoder.decode();
+                } else {
+                    text = await file.text();
+                }
+
+                progressFill.style.width = '60%';
+                dropIcon.innerHTML = '<div class="loading-msg"><span class="spinner"></span> Parsing log format...</div>';
+
+                const { sqlNames, originalNames, cleanedData } = parseW3C(text);
+
+                progressFill.style.width = '75%';
+                dropIcon.innerHTML = '<div class="loading-msg"><span class="spinner"></span> Loading into DuckDB...</div>';
+
+                const buffer = new TextEncoder().encode(cleanedData);
+                await db.registerFileBuffer('data.tsv', buffer);
+
+                await conn.query('DROP TABLE IF EXISTS logs');
+                await conn.query(`
+                    CREATE TABLE logs AS
+                    SELECT * FROM read_csv('data.tsv',
+                        delim='\t',
+                        header=true,
+                        nullstr='-',
+                        auto_detect=true,
+                        ignore_errors=true,
+                        sample_size=2000
+                    )
+                `);
+
+                progressFill.style.width = '95%';
+
+                const countResult = await conn.query('SELECT COUNT(*) as cnt FROM logs');
+                const rowCount = Number(countResult.toArray()[0].cnt);
+
+                progressFill.style.width = '100%';
+
+                // Update UI
+                currentSqlNames = sqlNames;
+                fileName.textContent = file.name;
+                fileStats.innerHTML = `<span>${formatSize(file.size)}</span> &middot; <span>${rowCount.toLocaleString()}</span> rows &middot; <span>${sqlNames.length}</span> columns`;
+                fileInfo.classList.add('visible');
+
+                colsTags.innerHTML = sqlNames.map(n => `<code>${escapeHtml(n)}</code>`).join('');
+                columnsList.classList.add('visible');
+
+                dropZone.classList.add('loaded');
+                dropIcon.textContent = file.name;
+                dropText.textContent = 'Drop another file to replace';
+
+                // Set default query
+                defaultQuery = getDefaultQuery(sqlNames);
+                queryInput.value = defaultQuery;
+                queryInput.placeholder = 'Enter SQL query...';
+                runBtn.disabled = false;
+                resetBtn.disabled = false;
+
+                setTimeout(() => {
+                    progressBar.classList.remove('visible');
+                    progressFill.style.width = '0%';
+                }, 600);
+
+            } catch (err) {
+                fileError.textContent = err.message;
+                dropIcon.textContent = 'Drop W3C log file here';
+                dropText.textContent = 'or click to browse';
+                progressBar.classList.remove('visible');
+                progressFill.style.width = '0%';
+                console.error('Ingestion error:', err);
+            }
+        }
+
+        // --- Default Query ---
+        function getDefaultQuery(sqlNames) {
+            const has = (n) => sqlNames.includes(n);
+            if (has('date') && has('time') && has('cs_method') && has('cs_uri_stem') && has('sc_status')) {
+                const cols = ['date', 'time', 'cs_method', 'cs_uri_stem', 'sc_status'];
+                if (has('time_taken')) cols.push('time_taken');
+                const select = cols.join(', ');
+                const order = has('time_taken') ? 'ORDER BY time_taken DESC' : 'ORDER BY date, time DESC';
+                return `SELECT ${select}\nFROM logs\nWHERE sc_status >= 400\n  AND time >= '12:00:00'\n${order}\nLIMIT 100`;
+            }
+            return 'SELECT *\nFROM logs\nLIMIT 100';
+        }
+
+        // --- Query Execution ---
+        async function runQuery() {
+            const sql = queryInput.value.trim();
+            if (!sql || !conn) return;
+
+            queryError.textContent = '';
+            runBtn.disabled = true;
+            runBtn.innerHTML = '<span class="spinner"></span>';
+
+            const startTime = performance.now();
+
+            try {
+                const result = await conn.query(sql);
+                const elapsed = performance.now() - startTime;
+                renderResults(result, elapsed);
+            } catch (err) {
+                queryError.textContent = err.message;
+                resultsSection.classList.remove('visible');
+            } finally {
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run';
+            }
+        }
+
+        runBtn.addEventListener('click', runQuery);
+        resetBtn.addEventListener('click', () => {
+            queryInput.value = defaultQuery;
+            queryError.textContent = '';
+        });
+
+        queryInput.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!runBtn.disabled) runQuery();
+            }
+        });
+
+        // --- Results Rendering ---
+        const MAX_DISPLAY = 10000;
+
+        function renderResults(arrowResult, elapsed) {
+            const columns = arrowResult.schema.fields.map(f => f.name);
+            const rows = arrowResult.toArray();
+            const rowCount = rows.length;
+
+            resultsMeta.innerHTML = `<span>${rowCount.toLocaleString()}</span> row${rowCount !== 1 ? 's' : ''} &middot; ${elapsed.toFixed(0)}ms`;
+
+            resultsHead.innerHTML = '<tr>' +
+                columns.map(c => `<th>${escapeHtml(c)}</th>`).join('') +
+                '</tr>';
+
+            const displayRows = rows.slice(0, MAX_DISPLAY);
+            let html = '';
+            for (const row of displayRows) {
+                html += '<tr>';
+                for (const col of columns) {
+                    const val = row[col];
+                    if (val === null || val === undefined) {
+                        html += '<td class="null-val">NULL</td>';
+                    } else {
+                        html += `<td>${escapeHtml(String(val))}</td>`;
+                    }
+                }
+                html += '</tr>';
+            }
+
+            if (rowCount > MAX_DISPLAY) {
+                html += `<tr><td colspan="${columns.length}" style="color:#f39c12;text-align:center;padding:12px;">Showing first ${MAX_DISPLAY.toLocaleString()} of ${rowCount.toLocaleString()} rows</td></tr>`;
+            }
+
+            resultsBody.innerHTML = html;
+            resultsSection.classList.add('visible');
+        }
+
+        // --- Utilities ---
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+    </script>
+</body>
+</html>
