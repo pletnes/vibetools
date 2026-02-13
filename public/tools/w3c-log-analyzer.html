@@ -283,11 +283,15 @@
     <script type="module">
         import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm';
 
+        // --- Config ---
+        const BATCH_SIZE = 50000; // lines per DuckDB insert batch
+
         // --- State ---
         let db = null;
         let conn = null;
         let currentSqlNames = [];
         let defaultQuery = '';
+        let usingOpfs = false;
 
         // --- DOM refs ---
         const dropZone = document.getElementById('dropZone');
@@ -323,9 +327,21 @@
                 const logger = new duckdb.ConsoleLogger();
                 db = new duckdb.AsyncDuckDB(logger, worker);
                 await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+
+                // Try OPFS-backed database for reduced RAM usage on large files
+                try {
+                    await db.open({
+                        path: 'opfs://w3c-analyzer.db',
+                    });
+                    usingOpfs = true;
+                } catch (e) {
+                    console.warn('OPFS not available, using in-memory database:', e.message);
+                }
+
                 conn = await db.connect();
                 dropIcon.textContent = 'Drop W3C log file here';
                 dropText.textContent = 'or click to browse';
+                if (usingOpfs) dropText.textContent += ' · OPFS-backed storage';
                 dropZone.style.cursor = 'pointer';
             } catch (err) {
                 dropIcon.textContent = 'Failed to initialize DuckDB';
@@ -370,33 +386,11 @@
                 .replace(/^_|_$/g, '');
         }
 
-        function parseW3C(text) {
-            const lines = text.split('\n');
-            let fieldsLine = null;
-            const dataLines = [];
-
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (trimmed === '') continue;
-                if (trimmed.startsWith('#Fields:')) {
-                    fieldsLine = trimmed;
-                } else if (trimmed.startsWith('#')) {
-                    continue;
-                } else {
-                    dataLines.push(trimmed);
-                }
-            }
-
-            if (!fieldsLine) {
-                throw new Error('No #Fields directive found. Is this a W3C Extended Log Format file?');
-            }
-
+        function parseFieldNames(fieldsLine) {
             const originalNames = fieldsLine.replace(/^#Fields:\s*/, '').split(/\s+/);
-            const sqlNames = originalNames.map(toSqlName);
-
-            // Deduplicate sql names (append _N if collision)
+            const rawSqlNames = originalNames.map(toSqlName);
             const seen = {};
-            const dedupedSqlNames = sqlNames.map(name => {
+            const sqlNames = rawSqlNames.map(name => {
                 if (seen[name] === undefined) {
                     seen[name] = 0;
                     return name;
@@ -404,17 +398,48 @@
                 seen[name]++;
                 return name + '_' + seen[name];
             });
-
-            const header = dedupedSqlNames.join('\t');
-            // Convert space-delimited data to tab-delimited to avoid issues with
-            // fields that may have multiple spaces. We split on whitespace and rejoin with tabs.
-            const tsvLines = dataLines.map(line => line.split(/\s+/).join('\t'));
-            const cleanedData = header + '\n' + tsvLines.join('\n');
-
-            return { sqlNames: dedupedSqlNames, originalNames, cleanedData };
+            return { sqlNames, originalNames };
         }
 
-        // --- Ingestion ---
+        // --- Batch flush: register a TSV chunk, INSERT into DuckDB, free buffer ---
+        async function flushBatch(lines, header, batchNum) {
+            const tsv = header + '\n' + lines.join('\n');
+            const buffer = new TextEncoder().encode(tsv);
+            const name = `batch_${batchNum}.tsv`;
+
+            await db.registerFileBuffer(name, buffer);
+            try {
+                if (batchNum === 0) {
+                    await conn.query('DROP TABLE IF EXISTS logs');
+                    await conn.query(`
+                        CREATE TABLE logs AS
+                        SELECT * FROM read_csv('${name}',
+                            delim='\t',
+                            header=true,
+                            nullstr='-',
+                            auto_detect=true,
+                            ignore_errors=true,
+                            sample_size=2000
+                        )
+                    `);
+                } else {
+                    await conn.query(`
+                        INSERT INTO logs
+                        SELECT * FROM read_csv('${name}',
+                            delim='\t',
+                            header=true,
+                            nullstr='-',
+                            auto_detect=true,
+                            ignore_errors=true
+                        )
+                    `);
+                }
+            } finally {
+                await db.dropFile(name);
+            }
+        }
+
+        // --- Ingestion (streaming, batched) ---
         async function ingestFile(file) {
             fileError.textContent = '';
             queryError.textContent = '';
@@ -425,56 +450,90 @@
             fileInfo.classList.remove('visible');
             columnsList.classList.remove('visible');
 
-            // Show progress
             progressBar.classList.add('visible');
             progressFill.style.width = '0%';
             dropIcon.innerHTML = '<div class="loading-msg"><span class="spinner"></span> Reading file...</div>';
             dropText.textContent = '';
 
             try {
-                // Stream-read the file for progress reporting
-                let text = '';
+                let sqlNames = null;
+                let header = null;
+                let batch = [];
+                let batchNum = 0;
+                let totalRows = 0;
+                let bytesRead = 0;
+                let leftover = '';
+
+                const processLines = async (lines, isFinal) => {
+                    for (const rawLine of lines) {
+                        const line = rawLine.trim();
+                        if (line === '') continue;
+
+                        if (line.startsWith('#Fields:')) {
+                            const parsed = parseFieldNames(line);
+                            sqlNames = parsed.sqlNames;
+                            header = sqlNames.join('\t');
+                            continue;
+                        }
+                        if (line.startsWith('#')) continue;
+                        if (!header) continue;
+
+                        batch.push(line.split(/\s+/).join('\t'));
+
+                        if (batch.length >= BATCH_SIZE) {
+                            const pct = Math.round((bytesRead / file.size) * 90);
+                            progressFill.style.width = pct + '%';
+                            dropIcon.innerHTML = `<div class="loading-msg"><span class="spinner"></span> Batch ${batchNum + 1}: ${(totalRows + batch.length).toLocaleString()} rows...</div>`;
+
+                            await flushBatch(batch, header, batchNum);
+                            totalRows += batch.length;
+                            batch = [];
+                            batchNum++;
+                        }
+                    }
+                };
+
                 if (file.stream) {
+                    // --- Streaming path: never hold entire file in memory ---
                     const reader = file.stream().getReader();
                     const decoder = new TextDecoder();
-                    let bytesRead = 0;
+
                     while (true) {
                         const { done, value } = await reader.read();
-                        if (done) break;
-                        text += decoder.decode(value, { stream: true });
+                        if (done) {
+                            // Flush decoder and process remaining text
+                            const tail = leftover + decoder.decode();
+                            if (tail) await processLines([tail], true);
+                            break;
+                        }
+
                         bytesRead += value.length;
-                        progressFill.style.width = Math.round((bytesRead / file.size) * 60) + '%';
+                        const chunk = leftover + decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+                        leftover = lines.pop(); // may be incomplete line
+                        await processLines(lines, false);
                     }
-                    text += decoder.decode();
                 } else {
-                    text = await file.text();
+                    // --- Fallback: read whole file, but still batch-insert ---
+                    const text = await file.text();
+                    bytesRead = file.size;
+                    const lines = text.split('\n');
+                    await processLines(lines, true);
                 }
 
-                progressFill.style.width = '60%';
-                dropIcon.innerHTML = '<div class="loading-msg"><span class="spinner"></span> Parsing log format...</div>';
+                // Flush remaining rows
+                if (batch.length > 0) {
+                    dropIcon.innerHTML = `<div class="loading-msg"><span class="spinner"></span> Final batch: ${(totalRows + batch.length).toLocaleString()} rows...</div>`;
+                    await flushBatch(batch, header, batchNum);
+                    totalRows += batch.length;
+                }
 
-                const { sqlNames, originalNames, cleanedData } = parseW3C(text);
-
-                progressFill.style.width = '75%';
-                dropIcon.innerHTML = '<div class="loading-msg"><span class="spinner"></span> Loading into DuckDB...</div>';
-
-                const buffer = new TextEncoder().encode(cleanedData);
-                await db.registerFileBuffer('data.tsv', buffer);
-
-                await conn.query('DROP TABLE IF EXISTS logs');
-                await conn.query(`
-                    CREATE TABLE logs AS
-                    SELECT * FROM read_csv('data.tsv',
-                        delim='\t',
-                        header=true,
-                        nullstr='-',
-                        auto_detect=true,
-                        ignore_errors=true,
-                        sample_size=2000
-                    )
-                `);
+                if (!sqlNames) {
+                    throw new Error('No #Fields directive found. Is this a W3C Extended Log Format file?');
+                }
 
                 progressFill.style.width = '95%';
+                dropIcon.innerHTML = '<div class="loading-msg"><span class="spinner"></span> Verifying...</div>';
 
                 const countResult = await conn.query('SELECT COUNT(*) as cnt FROM logs');
                 const rowCount = Number(countResult.toArray()[0].cnt);
@@ -484,7 +543,8 @@
                 // Update UI
                 currentSqlNames = sqlNames;
                 fileName.textContent = file.name;
-                fileStats.innerHTML = `<span>${formatSize(file.size)}</span> &middot; <span>${rowCount.toLocaleString()}</span> rows &middot; <span>${sqlNames.length}</span> columns`;
+                fileStats.innerHTML = `<span>${formatSize(file.size)}</span> &middot; <span>${rowCount.toLocaleString()}</span> rows &middot; <span>${sqlNames.length}</span> columns` +
+                    ` &middot; <span>${batchNum + 1}</span> batch${batchNum > 0 ? 'es' : ''}`;
                 fileInfo.classList.add('visible');
 
                 colsTags.innerHTML = sqlNames.map(n => `<code>${escapeHtml(n)}</code>`).join('');
@@ -494,7 +554,6 @@
                 dropIcon.textContent = file.name;
                 dropText.textContent = 'Drop another file to replace';
 
-                // Set default query
                 defaultQuery = getDefaultQuery(sqlNames);
                 queryInput.value = defaultQuery;
                 queryInput.placeholder = 'Enter SQL query...';
