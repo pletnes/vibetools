@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Comparison Tool</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 6px; color: #00d4ff; font-weight: 300; }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 13px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* Input section */
+        .inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .panel {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        .line-count {
+            font-size: 11px;
+            color: #555;
+        }
+        textarea {
+            width: 100%;
+            background: #0f1629;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 12px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            min-height: 180px;
+        }
+        textarea:focus { border-color: #00d4ff; }
+        textarea::placeholder { color: #555; }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 9px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        .opt-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #aaa;
+            cursor: pointer;
+            user-select: none;
+        }
+        .opt-label input[type=checkbox] { accent-color: #00d4ff; width: 14px; height: 14px; }
+
+        /* Results */
+        .results-wrap {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #333;
+        }
+        .results-header h2 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        .summary {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+        }
+        .summary span { color: #888; }
+        .summary .s-match { color: #2ecc71; }
+        .summary .s-miss { color: #ff6b6b; }
+        .summary .s-skip { color: #555; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        thead th {
+            background: #0f1629;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+        }
+        tbody tr { border-bottom: 1px solid #1e2a44; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: #1d2a4d; }
+        td {
+            padding: 9px 12px;
+            vertical-align: top;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        td.num {
+            color: #555;
+            font-size: 11px;
+            width: 32px;
+            text-align: right;
+            font-family: inherit;
+        }
+        td.status-cell {
+            width: 90px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .pill-match { background: #1a4a2e; color: #2ecc71; border: 1px solid #2ecc71; }
+        .pill-ci    { background: #1a3a4a; color: #00d4ff; border: 1px solid #00d4ff; }
+        .pill-miss  { background: #4a1a1a; color: #ff6b6b; border: 1px solid #ff6b6b; }
+        .pill-skip  { background: #222; color: #555; border: 1px solid #333; }
+        .pill-err   { background: #4a2a0a; color: #f39c12; border: 1px solid #f39c12; }
+
+        .norm-row {
+            font-size: 11px;
+            color: #888;
+            margin-top: 3px;
+        }
+        .norm-row .tag {
+            color: #555;
+            margin-right: 4px;
+        }
+        .norm-changed { color: #f39c12; }
+        .notes-cell {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 11px;
+            color: #888;
+            width: 180px;
+        }
+        .note-tag {
+            display: inline-block;
+            background: #1d2a4d;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 1px 5px;
+            margin: 1px 2px 1px 0;
+            font-size: 10px;
+            color: #aaa;
+        }
+
+        .results-scroll {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Email Comparison</h1>
+    <p class="subtitle">Compare email addresses with Unicode normalization, punycode, and case folding — one pair per line</p>
+
+    <div class="inputs">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>List A</h2>
+                <span class="line-count" id="countA">0 emails</span>
+            </div>
+            <textarea id="listA" placeholder="user@example.com&#10;münchen@münchen.de&#10;User@EXAMPLE.COM" spellcheck="false"></textarea>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>List B</h2>
+                <span class="line-count" id="countB">0 emails</span>
+            </div>
+            <textarea id="listB" placeholder="user@example.com&#10;münchen@xn--mnchen-3ya.de&#10;user@example.com" spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="compare()">Compare</button>
+        <button class="btn-secondary" onclick="loadExample()">Load Example</button>
+        <button class="btn-secondary" onclick="clearAll()">Clear</button>
+        <label class="opt-label">
+            <input type="checkbox" id="optCaseless" checked>
+            Case-insensitive local part
+        </label>
+        <label class="opt-label">
+            <input type="checkbox" id="optAutoCompare" checked>
+            Auto-compare on input
+        </label>
+    </div>
+
+    <div class="results-wrap">
+        <div class="results-header">
+            <h2>Results</h2>
+            <div class="summary" id="summary"></div>
+        </div>
+        <div class="results-scroll">
+            <div class="empty-state" id="emptyState">Enter email addresses above to compare</div>
+            <table id="resultsTable" style="display:none">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Email A</th>
+                        <th>Email B</th>
+                        <th>Result</th>
+                        <th>Normalizations applied</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// ─── Compact Punycode implementation (RFC 3492) ───────────────────────────────
+const Punycode = (() => {
+    const BASE=36,TMIN=1,TMAX=26,SKEW=38,DAMP=700,IBIAS=72,IN=128;
+    const cp2digit = c => c-48<10?c-48:c-65<26?c-65:c-97<26?c-97:NaN;
+    const digit2cp = d => d+( d<26?97:22 );
+
+    function adapt(delta,points,first){
+        delta=first?Math.floor(delta/DAMP):delta>>1;
+        delta+=Math.floor(delta/points);
+        let k=0;
+        while(delta>((BASE-TMIN)*TMAX)>>1){delta=Math.floor(delta/(BASE-TMIN));k+=BASE;}
+        return k+Math.floor(((BASE-TMIN+1)*delta)/(delta+SKEW));
+    }
+
+    function decode(input){
+        let n=IN,i=0,bias=IBIAS;
+        const out=[];
+        let basic=input.lastIndexOf('-');
+        if(basic<0)basic=0;
+        for(let j=0;j<basic;j++){
+            const c=input.charCodeAt(j);
+            if(c>=128)throw new Error('non-basic');
+            out.push(c);
+        }
+        let idx=basic>0?basic+1:0;
+        while(idx<input.length){
+            const oldi=i;let w=1;
+            for(let k=BASE;;k+=BASE){
+                if(idx>=input.length)throw new Error('overflow');
+                const digit=cp2digit(input.charCodeAt(idx++));
+                if(isNaN(digit))throw new Error('bad char');
+                i+=digit*w;
+                const t=k<=bias?TMIN:k>=bias+TMAX?TMAX:k-bias;
+                if(digit<t)break;
+                w*=BASE-t;
+            }
+            const len=out.length+1;
+            bias=adapt(i-oldi,len,oldi===0);
+            n+=Math.floor(i/len);
+            i%=len;
+            out.splice(i,0,n);
+            i++;
+        }
+        return String.fromCodePoint(...out);
+    }
+
+    function encode(input){
+        const cps=[...input].map(c=>c.codePointAt(0));
+        let n=IN,delta=0,bias=IBIAS;
+        const basics=cps.filter(c=>c<128);
+        let h=basics.length,b=h;
+        let out=basics.map(c=>String.fromCharCode(c)).join('');
+        if(b>0)out+='-';
+        while(h<cps.length){
+            const m=cps.filter(c=>c>=n).reduce((a,c)=>Math.min(a,c),Infinity);
+            delta+=(m-n)*(h+1);n=m;
+            for(const c of cps){
+                if(c<n)delta++;
+                if(c===n){
+                    let q=delta;
+                    for(let k=BASE;;k+=BASE){
+                        const t=k<=bias?TMIN:k>=bias+TMAX?TMAX:k-bias;
+                        if(q<t)break;
+                        const d=t+(q-t)%(BASE-t);
+                        out+=String.fromCharCode(digit2cp(d));
+                        q=Math.floor((q-t)/(BASE-t));
+                    }
+                    out+=String.fromCharCode(digit2cp(q));
+                    bias=adapt(delta,h+1,h===b);
+                    delta=0;h++;
+                }
+            }
+            delta++;n++;
+        }
+        return out;
+    }
+
+    // Convert a full domain to its ACE (punycode) form
+    function domainToACE(domain){
+        return domain.split('.').map(label=>{
+            if(/[^\x00-\x7F]/.test(label)){
+                return 'xn--'+encode(label.normalize('NFC'));
+            }
+            return label;
+        }).join('.');
+    }
+
+    // Convert a full domain to its Unicode form
+    function domainToUnicode(domain){
+        return domain.split('.').map(label=>{
+            if(label.toLowerCase().startsWith('xn--')){
+                try{ return decode(label.slice(4)); }
+                catch(e){ return label; }
+            }
+            return label;
+        }).join('.');
+    }
+
+    return {encode,decode,domainToACE,domainToUnicode};
+})();
+
+// ─── Email normalization ──────────────────────────────────────────────────────
+function normalizeEmail(raw){
+    const original=raw.trim();
+    if(!original) return null;
+
+    const notes=[];
+    const atIdx=original.lastIndexOf('@');
+    if(atIdx<0) return {error:'Missing @',raw:original};
+    if(atIdx===0) return {error:'Empty local part',raw:original};
+    if(atIdx===original.length-1) return {error:'Empty domain',raw:original};
+
+    let local=original.substring(0,atIdx);
+    let domain=original.substring(atIdx+1);
+
+    // ── Local part ──
+    const localNFC=local.normalize('NFC');
+    if(localNFC!==local){ notes.push('local-nfc'); local=localNFC; }
+    const localLower=local.toLowerCase();
+
+    // ── Domain ──
+    const domainLower=domain.toLowerCase();
+    if(domainLower!==domain) notes.push('domain-case');
+    domain=domainLower;
+
+    // Detect if input domain has unicode chars
+    const hasUnicode=/[^\x00-\x7F]/.test(domain);
+    // Detect if input domain has punycode labels
+    const hasPunycode=domain.split('.').some(l=>l.startsWith('xn--'));
+
+    // Canonical form: ACE (punycode) domain — always comparable
+    let domainACE=domain;
+    let domainUnicode=domain;
+    try{
+        domainACE=Punycode.domainToACE(domain);
+        domainUnicode=Punycode.domainToUnicode(domainACE);
+    }catch(e){
+        notes.push('punycode-err');
+    }
+
+    if(hasUnicode) notes.push('unicode→punycode');
+    if(hasPunycode && !hasUnicode) notes.push('punycode→unicode');
+
+    // Validate domain via URL (catches illegal chars etc)
+    let validDomain=true;
+    try{ new URL('http://'+domainACE); }
+    catch(e){ validDomain=false; notes.push('invalid-domain'); }
+
+    return {
+        raw: original,
+        local,              // NFC local (original case)
+        localLower,         // NFC local lowercased
+        domainACE,          // canonical punycode domain
+        domainUnicode,      // human-readable unicode domain
+        normalized: local+'@'+domainACE,
+        normalizedCaseless: localLower+'@'+domainACE,
+        notes,
+        validDomain,
+        hasUnicode,
+        hasPunycode,
+    };
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function escHtml(s){
+    const d=document.createElement('div');
+    d.textContent=s;
+    return d.innerHTML;
+}
+
+function updateCount(id, textarea){
+    const lines=textarea.value.split('\n').filter(l=>l.trim()).length;
+    document.getElementById(id).textContent=lines===1?'1 email':`${lines} emails`;
+}
+
+function compare(){
+    const caseless=document.getElementById('optCaseless').checked;
+    const linesA=document.getElementById('listA').value.split('\n');
+    const linesB=document.getElementById('listB').value.split('\n');
+    const maxLen=Math.max(linesA.length,linesB.length);
+
+    let matchCount=0,missCount=0,skipCount=0,ciCount=0;
+    const rows=[];
+
+    for(let i=0;i<maxLen;i++){
+        const rawA=(linesA[i]??'').trim();
+        const rawB=(linesB[i]??'').trim();
+
+        if(!rawA&&!rawB){ skipCount++; rows.push({type:'empty',idx:i+1}); continue; }
+
+        const a=normalizeEmail(rawA);
+        const b=normalizeEmail(rawB);
+
+        if(!a||a.error||!b||b.error){
+            rows.push({type:'error',idx:i+1,a,b});
+            missCount++;
+            continue;
+        }
+
+        // Strict comparison (case-sensitive local)
+        const strictMatch=a.normalized===b.normalized;
+        // Case-insensitive comparison
+        const ciMatch=a.normalizedCaseless===b.normalizedCaseless;
+
+        let status;
+        if(strictMatch){
+            status='match'; matchCount++;
+        } else if(caseless&&ciMatch){
+            status='ci'; ciCount++; matchCount++;
+        } else {
+            status='miss'; missCount++;
+        }
+
+        rows.push({type:'pair',idx:i+1,a,b,status,strictMatch,ciMatch});
+    }
+
+    // Render
+    const tbody=document.getElementById('resultsBody');
+    tbody.innerHTML='';
+
+    if(rows.length===0){
+        document.getElementById('emptyState').style.display='block';
+        document.getElementById('resultsTable').style.display='none';
+        document.getElementById('summary').innerHTML='';
+        return;
+    }
+
+    document.getElementById('emptyState').style.display='none';
+    document.getElementById('resultsTable').style.display='table';
+
+    for(const row of rows){
+        const tr=document.createElement('tr');
+        if(row.type==='empty'){
+            tr.innerHTML=`<td class="num">${row.idx}</td><td colspan="4" style="color:#333;font-size:11px;font-family:inherit">— empty —</td>`;
+        } else if(row.type==='error'){
+            const errA=row.a?.error||'';
+            const errB=row.b?.error||'';
+            tr.innerHTML=`
+                <td class="num">${row.idx}</td>
+                <td>${row.a?escHtml(row.a.raw):'<span style="color:#555">—</span>'}${errA?`<div class="norm-row" style="color:#f39c12">${escHtml(errA)}</div>`:''}
+                </td>
+                <td>${row.b?escHtml(row.b.raw):'<span style="color:#555">—</span>'}${errB?`<div class="norm-row" style="color:#f39c12">${escHtml(errB)}</div>`:''}
+                </td>
+                <td class="status-cell"><span class="pill pill-err">Error</span></td>
+                <td class="notes-cell"></td>`;
+        } else {
+            const {idx,a,b,status}=row;
+
+            const pillClass={match:'pill-match',ci:'pill-ci',miss:'pill-miss'}[status];
+            const pillText={match:'Match',ci:'CI Match',miss:'No Match'}[status];
+
+            const renderEmail=(em)=>{
+                const showAce=em.hasUnicode||(em.hasPunycode&&em.domainUnicode!==em.domainACE);
+                let html=escHtml(em.raw);
+                if(em.normalized!==em.raw){
+                    const showUni=em.domainUnicode!==em.domainACE;
+                    html+=`<div class="norm-row"><span class="tag">→</span><span class="norm-changed">${escHtml(em.local)}@${escHtml(em.domainACE)}</span></div>`;
+                    if(showUni){
+                        html+=`<div class="norm-row"><span class="tag"> </span><span style="color:#666">${escHtml(em.local)}@${escHtml(em.domainUnicode)}</span></div>`;
+                    }
+                }
+                return html;
+            };
+
+            const allNotes=[...new Set([...a.notes,...b.notes])];
+            const notesHtml=allNotes.map(n=>`<span class="note-tag">${escHtml(n)}</span>`).join('');
+
+            tr.innerHTML=`
+                <td class="num">${idx}</td>
+                <td>${renderEmail(a)}</td>
+                <td>${renderEmail(b)}</td>
+                <td class="status-cell"><span class="pill ${pillClass}">${pillText}</span></td>
+                <td class="notes-cell">${notesHtml||'<span style="color:#555">—</span>'}</td>`;
+        }
+        tbody.appendChild(tr);
+    }
+
+    // Summary
+    const total=matchCount+missCount;
+    document.getElementById('summary').innerHTML=`
+        <span class="s-match">${matchCount} match${matchCount!==1?'es':''}</span>
+        <span class="s-miss">${missCount} mismatch${missCount!==1?'es':''}</span>
+        ${skipCount?`<span class="s-skip">${skipCount} empty</span>`:''}`;
+}
+
+// ─── Example data ─────────────────────────────────────────────────────────────
+function loadExample(){
+    document.getElementById('listA').value=[
+        'user@example.com',
+        'User@Example.COM',
+        'münchen@münchen.de',
+        'info@xn--nxasmq6b3b4d.com',
+        'José@example.com',
+        'user@example.com',
+        'bad-email',
+    ].join('\n');
+    document.getElementById('listB').value=[
+        'user@example.com',
+        'user@example.com',
+        'münchen@xn--mnchen-3ya.de',
+        'info@παράδειγμα.com',
+        'Jose\u0301@example.com',
+        'other@example.com',
+        'also-bad',
+    ].join('\n');
+    updateCount('countA',document.getElementById('listA'));
+    updateCount('countB',document.getElementById('listB'));
+    compare();
+}
+
+function clearAll(){
+    document.getElementById('listA').value='';
+    document.getElementById('listB').value='';
+    document.getElementById('countA').textContent='0 emails';
+    document.getElementById('countB').textContent='0 emails';
+    document.getElementById('emptyState').style.display='block';
+    document.getElementById('resultsTable').style.display='none';
+    document.getElementById('summary').innerHTML='';
+    document.getElementById('resultsBody').innerHTML='';
+}
+
+// ─── Auto-compare wiring ──────────────────────────────────────────────────────
+let debounce;
+function onInput(side){
+    updateCount('count'+side, document.getElementById('list'+side));
+    if(document.getElementById('optAutoCompare').checked){
+        clearTimeout(debounce);
+        debounce=setTimeout(compare,300);
+    }
+}
+document.getElementById('listA').addEventListener('input',()=>onInput('A'));
+document.getElementById('listB').addEventListener('input',()=>onInput('B'));
+document.getElementById('optCaseless').addEventListener('change',compare);
+loadExample();
+</script>
+</body>
+</html>
