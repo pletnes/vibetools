@@ -184,6 +184,134 @@
             font-size: 16px;
             margin-right: 4px;
         }
+
+        /* IP lookup layout */
+        .ip-lookup-layout {
+            display: none;
+            gap: 16px;
+        }
+        .ip-lookup-layout.active {
+            display: flex;
+        }
+        .ip-input-panel {
+            flex: 0 0 25%;
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+        }
+        .ip-input-panel .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .ip-input-panel .panel-header h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        .ip-textarea {
+            width: 100%;
+            flex: 1;
+            min-height: 400px;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            resize: none;
+            outline: none;
+        }
+        .ip-textarea:focus { border-color: #00d4ff; }
+        .ip-textarea::placeholder { color: #555; }
+        .ip-results-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .ip-results-panel .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .ip-results-panel .panel-header h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        .ip-results-panel .results {
+            flex: 1;
+            min-height: 400px;
+            max-height: 600px;
+        }
+        .ip-group {
+            padding: 12px 16px;
+            border-bottom: 1px solid #333;
+        }
+        .ip-group:last-child { border-bottom: none; }
+        .ip-group-header {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 15px;
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 8px;
+        }
+        .ip-group-no-match {
+            color: #888;
+            font-size: 13px;
+            font-style: italic;
+        }
+        .ip-group-service {
+            padding: 6px 0;
+            font-size: 13px;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+        .ip-group-service::before {
+            content: '├';
+            color: #555;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        .ip-group:last-child .ip-group-service:last-child::before,
+        .ip-group-service:last-child::before {
+            content: '└';
+        }
+        .ip-group-service-name { font-weight: 600; }
+        .ip-group-service-region { color: #888; }
+        .ip-group-service-cidr {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: #888;
+            font-size: 12px;
+        }
+        .ip-count-badge {
+            display: inline-block;
+            background: #00d4ff;
+            color: #1a1a2e;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 10px;
+            margin-left: 6px;
+        }
+        @media (max-width: 700px) {
+            .ip-lookup-layout.active {
+                flex-direction: column;
+            }
+            .ip-input-panel {
+                flex: none;
+                min-width: unset;
+            }
+            .ip-textarea {
+                min-height: 150px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -213,13 +341,34 @@
                 </div>
             </div>
 
-            <div class="search-section">
-                <input type="text" id="searchInput" placeholder="Search...">
-                <div class="search-hint" id="searchHint">Search by service name (e.g., "Storage", "SQL", "AzureCloud")</div>
+            <!-- Service search (single input) -->
+            <div class="search-section" id="serviceSearchSection">
+                <input type="text" id="searchInput" placeholder="Search by service name...">
+                <div class="search-hint">Search by service name (e.g., "Storage", "SQL", "AzureCloud")</div>
             </div>
 
             <div class="results" id="results">
                 <div class="no-results">Start typing to search</div>
+            </div>
+
+            <!-- IP lookup (side-by-side) -->
+            <div class="ip-lookup-layout" id="ipLookupLayout">
+                <div class="ip-input-panel">
+                    <div class="panel-header">
+                        <h2>IP Addresses</h2>
+                        <button class="btn-secondary" onclick="document.getElementById('ipTextarea').value=''; searchIPs();" style="padding:4px 10px;font-size:12px;">Clear</button>
+                    </div>
+                    <textarea id="ipTextarea" class="ip-textarea" placeholder="Enter one IP per line&#10;&#10;20.38.147.10&#10;13.70.0.1&#10;52.168.112.64"></textarea>
+                </div>
+                <div class="ip-results-panel">
+                    <div class="panel-header">
+                        <h2>Results</h2>
+                        <span id="ipResultCount" style="font-size:12px;color:#888;"></span>
+                    </div>
+                    <div class="results" id="ipResults">
+                        <div class="no-results">Enter IP addresses to look up</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -228,20 +377,29 @@
         let data = null;
         let currentTab = 'service';
         let searchTimeout = null;
+        let ipTimeout = null;
 
         const fileInput = document.getElementById('fileInput');
         const uploadSection = document.getElementById('uploadSection');
         const mainContent = document.getElementById('mainContent');
         const searchInput = document.getElementById('searchInput');
-        const searchHint = document.getElementById('searchHint');
         const results = document.getElementById('results');
         const stats = document.getElementById('stats');
         const fileInfo = document.getElementById('fileInfo');
+        const serviceSearchSection = document.getElementById('serviceSearchSection');
+        const ipLookupLayout = document.getElementById('ipLookupLayout');
+        const ipTextarea = document.getElementById('ipTextarea');
+        const ipResults = document.getElementById('ipResults');
+        const ipResultCount = document.getElementById('ipResultCount');
 
         fileInput.addEventListener('change', handleFileUpload);
         searchInput.addEventListener('input', () => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(search, 150);
+        });
+        ipTextarea.addEventListener('input', () => {
+            clearTimeout(ipTimeout);
+            ipTimeout = setTimeout(searchIPs, 200);
         });
 
         function handleFileUpload(e) {
@@ -314,14 +472,16 @@
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
 
             if (tab === 'service') {
-                searchInput.placeholder = 'Search by service name...';
-                searchHint.textContent = 'Search by service name (e.g., "Storage", "SQL", "AzureCloud")';
+                serviceSearchSection.style.display = '';
+                results.style.display = '';
+                ipLookupLayout.classList.remove('active');
+                searchInput.value = '';
+                results.innerHTML = '<div class="no-results">Start typing to search</div>';
             } else {
-                searchInput.placeholder = 'Enter IP address (e.g., 20.38.147.10)...';
-                searchHint.textContent = 'Enter an IP address to find which Azure services it belongs to';
+                serviceSearchSection.style.display = 'none';
+                results.style.display = 'none';
+                ipLookupLayout.classList.add('active');
             }
-            searchInput.value = '';
-            results.innerHTML = '<div class="no-results">Start typing to search</div>';
         }
 
         function search() {
@@ -330,12 +490,7 @@
                 results.innerHTML = '<div class="no-results">Start typing to search</div>';
                 return;
             }
-
-            if (currentTab === 'service') {
-                searchServices(query);
-            } else {
-                searchIP(query);
-            }
+            searchServices(query);
         }
 
         function searchServices(query) {
@@ -370,62 +525,68 @@
             }).join('');
         }
 
-        function searchIP(query) {
-            // Validate IP format
-            if (!isValidIP(query)) {
-                results.innerHTML = '<div class="no-results">Enter a valid IPv4 address (e.g., 20.38.147.10)</div>';
+        function searchIPs() {
+            if (!data) return;
+            const raw = ipTextarea.value.trim();
+            if (!raw) {
+                ipResults.innerHTML = '<div class="no-results">Enter IP addresses to look up</div>';
+                ipResultCount.textContent = '';
                 return;
             }
 
-            const ipNum = ipToNumber(query);
-            const matches = [];
+            const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+            const ips = [...new Set(lines)]; // dedupe
+            let totalMatches = 0;
 
-            for (const service of data.values) {
-                const prefixes = service.properties?.addressPrefixes || [];
-                const matchingPrefixes = [];
+            const html = ips.map(ip => {
+                if (!isValidIP(ip)) {
+                    return `<div class="ip-group">
+                        <div class="ip-group-header">${escapeHtml(ip)}</div>
+                        <div class="ip-group-no-match">Invalid IP address</div>
+                    </div>`;
+                }
 
-                for (const prefix of prefixes) {
-                    if (ipInCIDR(ipNum, prefix)) {
-                        matchingPrefixes.push(prefix);
+                const ipNum = ipToNumber(ip);
+                const matches = [];
+
+                for (const service of data.values) {
+                    const prefixes = service.properties?.addressPrefixes || [];
+                    for (const prefix of prefixes) {
+                        if (ipInCIDR(ipNum, prefix)) {
+                            matches.push({
+                                name: service.name,
+                                region: service.properties?.region || 'Global',
+                                cidr: prefix
+                            });
+                        }
                     }
                 }
 
-                if (matchingPrefixes.length > 0) {
-                    matches.push({
-                        service,
-                        matchingPrefixes
-                    });
+                totalMatches += matches.length;
+
+                if (matches.length === 0) {
+                    return `<div class="ip-group">
+                        <div class="ip-group-header">${escapeHtml(ip)}</div>
+                        <div class="ip-group-no-match">No matching Azure services</div>
+                    </div>`;
                 }
-            }
 
-            if (matches.length === 0) {
-                results.innerHTML = '<div class="no-results">No Azure services found for this IP address</div>';
-                return;
-            }
+                const serviceHtml = matches.map(m =>
+                    `<div class="ip-group-service">
+                        <span class="ip-group-service-name">${escapeHtml(m.name)}</span>
+                        <span class="ip-group-service-region">${escapeHtml(m.region)}</span>
+                        <span class="ip-group-service-cidr">${escapeHtml(m.cidr)}</span>
+                    </div>`
+                ).join('');
 
-            results.innerHTML = matches.map(m => {
-                const v = m.service;
-                const region = v.properties?.region || 'Global';
-                const allPrefixes = v.properties?.addressPrefixes || [];
-                return `
-                    <div class="result-item" onclick="this.classList.toggle('expanded')">
-                        <div class="service-name">
-                            ${escapeHtml(v.name)}
-                        </div>
-                        <div class="service-region">Region: ${region}</div>
-                        <div class="ip-match-info">
-                            <strong>${query}</strong> matches:
-                            ${m.matchingPrefixes.map(p => `<code>${escapeHtml(p)}</code>`).join(', ')}
-                        </div>
-                        <div class="ip-list">
-                            ${allPrefixes.slice(0, 50).map(ip =>
-                                `<span class="ip-item${m.matchingPrefixes.includes(ip) ? ' match' : ''}">${escapeHtml(ip)}</span>`
-                            ).join('')}
-                            ${allPrefixes.length > 50 ? `<div style="margin-top:8px;color:#888;">...and ${allPrefixes.length - 50} more</div>` : ''}
-                        </div>
-                    </div>
-                `;
+                return `<div class="ip-group">
+                    <div class="ip-group-header">${escapeHtml(ip)} <span class="ip-count-badge">${matches.length}</span></div>
+                    ${serviceHtml}
+                </div>`;
             }).join('');
+
+            ipResults.innerHTML = html;
+            ipResultCount.textContent = `${ips.length} IP${ips.length !== 1 ? 's' : ''} · ${totalMatches} match${totalMatches !== 1 ? 'es' : ''}`;
         }
 
         // IP utility functions
