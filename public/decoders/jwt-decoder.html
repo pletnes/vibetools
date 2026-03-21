@@ -342,12 +342,23 @@
         }
 
         async function pasteFromClipboard() {
+            jwtInput.focus();
             try {
                 const text = await navigator.clipboard.readText();
-                jwtInput.value = text;
-                decode();
+                if (text) {
+                    jwtInput.value = text;
+                    decode();
+                }
             } catch (e) {
-                error.textContent = 'Could not read clipboard';
+                // clipboard.readText() denied — fall back to execCommand
+                try {
+                    jwtInput.value = '';
+                    if (!document.execCommand('paste')) {
+                        error.textContent = 'Clipboard access denied — use Ctrl+V / ⌘+V to paste';
+                    }
+                } catch (e2) {
+                    error.textContent = 'Clipboard access denied — use Ctrl+V / ⌘+V to paste';
+                }
             }
         }
 
