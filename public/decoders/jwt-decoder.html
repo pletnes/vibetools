@@ -126,6 +126,38 @@
         .expired { color: #ff6b6b; }
         .warning { color: #f39c12; }
         .buttons { display: flex; gap: 8px; }
+        .paste-modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .paste-modal-backdrop.visible { display: flex; }
+        .paste-modal {
+            background: #16213e;
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            padding: 20px;
+            width: 480px;
+            max-width: 90vw;
+        }
+        .paste-modal p {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .paste-modal textarea {
+            min-height: 80px;
+        }
+        .paste-modal .modal-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: flex-end;
+        }
         @media (max-width: 768px) {
             .decoded-section { grid-template-columns: 1fr; }
             .signature-panel { grid-column: 1; }
@@ -134,6 +166,17 @@
 </head>
 <body>
     <h1>JWT Decoder</h1>
+    <div class="paste-modal-backdrop" id="pasteModalBackdrop" onclick="closePasteModal(event)">
+        <div class="paste-modal">
+            <p>Press <strong>Ctrl+V</strong> (or Cmd+V) to paste your JWT:</p>
+            <textarea id="pasteZone" placeholder="Paste here..." spellcheck="false"></textarea>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="hidePasteModal()">Cancel</button>
+                <button onclick="confirmPasteModal()">Use this token</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="input-section">
             <div class="panel-header">
@@ -344,12 +387,49 @@
         async function pasteFromClipboard() {
             try {
                 const text = await navigator.clipboard.readText();
-                jwtInput.value = text;
-                decode();
+                if (text) {
+                    jwtInput.value = text;
+                    decode();
+                    return;
+                }
             } catch (e) {
-                error.textContent = 'Could not read clipboard';
+                // Clipboard API unavailable or permission denied (common in Firefox)
+            }
+            // Fallback: show paste modal so user can Ctrl+V
+            showPasteModal();
+        }
+
+        function showPasteModal() {
+            const backdrop = document.getElementById('pasteModalBackdrop');
+            const pasteZone = document.getElementById('pasteZone');
+            pasteZone.value = '';
+            backdrop.classList.add('visible');
+            pasteZone.focus();
+        }
+
+        function hidePasteModal() {
+            document.getElementById('pasteModalBackdrop').classList.remove('visible');
+        }
+
+        function closePasteModal(event) {
+            if (event.target === document.getElementById('pasteModalBackdrop')) {
+                hidePasteModal();
             }
         }
+
+        function confirmPasteModal() {
+            const text = document.getElementById('pasteZone').value.trim();
+            if (text) {
+                jwtInput.value = text;
+                decode();
+            }
+            hidePasteModal();
+        }
+
+        document.getElementById('pasteZone').addEventListener('paste', () => {
+            // Give the paste event time to populate the textarea value
+            setTimeout(confirmPasteModal, 50);
+        });
 
         function copyPart(part) {
             if (decodedParts[part]) {
