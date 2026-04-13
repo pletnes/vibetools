@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Average Color</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 8px; color: #00d4ff; font-weight: 300; }
+        .subtitle { text-align: center; color: #888; font-size: 14px; margin-bottom: 30px; }
+        .container { max-width: 700px; margin: 0 auto; }
+
+        /* Drop zone */
+        .drop-zone {
+            border: 2px dashed #333;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: #16213e;
+            position: relative;
+        }
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: #00d4ff;
+            background: #1d2a4d;
+        }
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        .drop-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            line-height: 1;
+        }
+        .drop-label {
+            font-size: 18px;
+            color: #eee;
+            margin-bottom: 8px;
+        }
+        .drop-hint {
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* Preview & result */
+        .result-area {
+            display: none;
+            margin-top: 28px;
+            gap: 24px;
+            align-items: flex-start;
+        }
+        .result-area.visible {
+            display: flex;
+        }
+
+        .preview-wrap {
+            flex: 0 0 auto;
+            width: 200px;
+        }
+        .preview-wrap img {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #0f1629;
+            display: block;
+        }
+        .preview-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .color-info {
+            flex: 1 1 auto;
+        }
+
+        .swatch {
+            width: 100%;
+            height: 120px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            margin-bottom: 20px;
+            transition: background-color 0.4s;
+        }
+
+        .values {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .value-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px 16px;
+        }
+        .value-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            min-width: 50px;
+        }
+        .value-text {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 16px;
+            color: #eee;
+            flex: 1;
+            padding: 0 12px;
+        }
+
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+
+        .channel-bars {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .channel-bar-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .channel-bar-bg {
+            width: 100%;
+            height: 12px;
+            background: #0f1629;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .channel-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.4s;
+        }
+        .bar-r { background: #ff6b6b; }
+        .bar-g { background: #2ecc71; }
+        .bar-b { background: #4a9eff; }
+        .channel-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+
+        .reset-btn {
+            margin-top: 20px;
+            background: #333;
+            color: #eee;
+        }
+        .reset-btn:hover { background: #444; }
+
+        canvas { display: none; }
+
+        @media (max-width: 500px) {
+            .result-area.visible { flex-direction: column; }
+            .preview-wrap { width: 100%; }
+            .preview-wrap img { width: 100%; height: auto; max-height: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Average Color</h1>
+        <p class="subtitle">Drop an image to compute its average RGB color</p>
+
+        <div class="drop-zone" id="dropZone">
+            <input type="file" id="fileInput" accept="image/*">
+            <div class="drop-icon">&#128444;</div>
+            <div class="drop-label">Drop image here</div>
+            <div class="drop-hint">or click to browse &mdash; PNG, JPG, GIF, WebP, SVG&hellip;</div>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <div class="preview-wrap">
+                <img id="preview" src="" alt="Preview">
+                <div class="preview-label" id="fileName"></div>
+            </div>
+
+            <div class="color-info">
+                <div class="swatch" id="swatch"></div>
+
+                <div class="channel-bars">
+                    <div class="channel-bar-wrap">
+                        <div class="channel-bar-bg"><div class="channel-bar-fill bar-r" id="barR" style="width:0%"></div></div>
+                        <div class="channel-label">R</div>
+                    </div>
+                    <div class="channel-bar-wrap">
+                        <div class="channel-bar-bg"><div class="channel-bar-fill bar-g" id="barG" style="width:0%"></div></div>
+                        <div class="channel-label">G</div>
+                    </div>
+                    <div class="channel-bar-wrap">
+                        <div class="channel-bar-bg"><div class="channel-bar-fill bar-b" id="barB" style="width:0%"></div></div>
+                        <div class="channel-label">B</div>
+                    </div>
+                </div>
+
+                <div class="values">
+                    <div class="value-row">
+                        <span class="value-label">HEX</span>
+                        <span class="value-text" id="valHex">&mdash;</span>
+                        <button onclick="copyValue('valHex')">Copy</button>
+                    </div>
+                    <div class="value-row">
+                        <span class="value-label">RGB</span>
+                        <span class="value-text" id="valRgb">&mdash;</span>
+                        <button onclick="copyValue('valRgb')">Copy</button>
+                    </div>
+                    <div class="value-row">
+                        <span class="value-label">HSL</span>
+                        <span class="value-text" id="valHsl">&mdash;</span>
+                        <button onclick="copyValue('valHsl')">Copy</button>
+                    </div>
+                </div>
+
+                <button class="reset-btn" onclick="reset()">&#8617; Try another image</button>
+            </div>
+        </div>
+
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const resultArea = document.getElementById('resultArea');
+        const preview = document.getElementById('preview');
+        const fileName = document.getElementById('fileName');
+        const swatch = document.getElementById('swatch');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        // Drag & drop events
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) processFile(file);
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files[0]) processFile(fileInput.files[0]);
+        });
+
+        function processFile(file) {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                // Draw image to canvas (max 200x200 for speed)
+                const MAX = 200;
+                const scale = Math.min(MAX / img.width, MAX / img.height, 1);
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let rSum = 0, gSum = 0, bSum = 0, count = 0;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const a = data[i + 3];
+                    if (a === 0) continue; // skip fully transparent pixels
+                    // Weight by alpha for semi-transparent images
+                    const weight = a / 255;
+                    rSum += data[i]     * weight;
+                    gSum += data[i + 1] * weight;
+                    bSum += data[i + 2] * weight;
+                    count += weight;
+                }
+
+                const r = count > 0 ? Math.round(rSum / count) : 0;
+                const g = count > 0 ? Math.round(gSum / count) : 0;
+                const b = count > 0 ? Math.round(bSum / count) : 0;
+
+                showResult(file.name, url, r, g, b);
+                URL.revokeObjectURL(url);
+            };
+            img.src = url;
+        }
+
+        function showResult(name, src, r, g, b) {
+            preview.src = src;
+            fileName.textContent = name.length > 24 ? name.slice(0, 22) + '…' : name;
+
+            const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+            const rgb = `rgb(${r}, ${g}, ${b})`;
+            const [h, s, l] = rgbToHsl(r, g, b);
+            const hsl = `hsl(${h}, ${s}%, ${l}%)`;
+
+            swatch.style.backgroundColor = hex;
+            document.getElementById('valHex').textContent = hex;
+            document.getElementById('valRgb').textContent = rgb;
+            document.getElementById('valHsl').textContent = hsl;
+
+            document.getElementById('barR').style.width = (r / 255 * 100) + '%';
+            document.getElementById('barG').style.width = (g / 255 * 100) + '%';
+            document.getElementById('barB').style.width = (b / 255 * 100) + '%';
+
+            dropZone.style.display = 'none';
+            resultArea.classList.add('visible');
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+        }
+
+        function copyValue(id) {
+            const text = document.getElementById(id).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const orig = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = orig, 1500);
+            });
+        }
+
+        function reset() {
+            resultArea.classList.remove('visible');
+            dropZone.style.display = '';
+            fileInput.value = '';
+            preview.src = '';
+        }
+    </script>
+</body>
+</html>
