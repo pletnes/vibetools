@@ -315,12 +315,12 @@
                 const b = count > 0 ? Math.round(bSum / count) : 0;
 
                 showResult(file.name, url, r, g, b);
-                URL.revokeObjectURL(url);
             };
             img.src = url;
         }
 
         function showResult(name, src, r, g, b) {
+            preview.onload = () => URL.revokeObjectURL(src);
             preview.src = src;
             fileName.textContent = name.length > 24 ? name.slice(0, 22) + '…' : name;
 
