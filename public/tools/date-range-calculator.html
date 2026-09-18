@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Range Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.7.2/build/global/luxon.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; font-weight: 300; }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .panel { display: flex; flex-direction: column; }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel-header h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        button {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #00a8cc; }
+        button:active { transform: scale(0.98); }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-secondary:hover { background: #444; }
+        .btn-today { background: #9b59b6; }
+        .btn-today:hover { background: #8e44ad; }
+        input[type="text"] {
+            width: 100%;
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 16px;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: #00d4ff; }
+        input[type="text"]::placeholder { color: #555; }
+        .error { color: #ff6b6b; font-size: 13px; margin-top: 8px; min-height: 20px; }
+        .parsed { color: #888; font-size: 13px; margin-top: 8px; min-height: 20px; }
+        .buttons { display: flex; gap: 8px; }
+        .top-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .result {
+            background: #16213e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+        }
+        .result .days {
+            font-size: 56px;
+            font-weight: 300;
+            color: #00d4ff;
+            line-height: 1.1;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        .result .days.negative { color: #f39c12; }
+        .result .days.empty { color: #555; }
+        .result .label {
+            color: #888;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+        .breakdown {
+            list-style: none;
+            margin-top: 24px;
+            border-top: 1px solid #333;
+        }
+        .breakdown li {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 10px 4px;
+            border-bottom: 1px solid #333;
+            font-size: 14px;
+        }
+        .breakdown .k { color: #888; }
+        .breakdown .v {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: #eee;
+        }
+        .hint {
+            color: #888;
+            font-size: 13px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Date Range Calculator</h1>
+    <div class="container">
+        <div class="top-actions">
+            <button class="btn-today" onclick="setToday()">To = Today</button>
+            <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        </div>
+
+        <div class="row">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>From Date</h2>
+                    <button onclick="copyText('from')">Copy</button>
+                </div>
+                <input type="text" id="from" placeholder="e.g., 2024-01-01" spellcheck="false">
+                <div class="error" id="fromError"></div>
+                <div class="parsed" id="fromParsed"></div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>To Date</h2>
+                    <button onclick="copyText('to')">Copy</button>
+                </div>
+                <input type="text" id="to" placeholder="e.g., 2024-12-24" spellcheck="false">
+                <div class="error" id="toError"></div>
+                <div class="parsed" id="toParsed"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Difference</h2>
+                <button onclick="copyDays()">Copy Days</button>
+            </div>
+            <div class="result">
+                <div class="days empty" id="days">—</div>
+                <div class="label" id="daysLabel">Days</div>
+                <ul class="breakdown" id="breakdown"></ul>
+            </div>
+        </div>
+
+        <p class="hint">Accepted formats: ISO (2024-01-31), yyyy/MM/dd, dd.MM.yyyy, dd/MM/yyyy, MM/dd/yyyy, d MMMM yyyy, MMMM d yyyy</p>
+    </div>
+
+    <script>
+        const { DateTime } = luxon;
+
+        const from = document.getElementById('from');
+        const to = document.getElementById('to');
+        const daysEl = document.getElementById('days');
+        const daysLabel = document.getElementById('daysLabel');
+        const breakdown = document.getElementById('breakdown');
+
+        const errors = {
+            from: document.getElementById('fromError'),
+            to: document.getElementById('toError')
+        };
+        const parsedLabels = {
+            from: document.getElementById('fromParsed'),
+            to: document.getElementById('toParsed')
+        };
+
+        // Tried in order; the first one that parses wins.
+        const FORMATS = [
+            'yyyy-MM-dd',
+            'yyyy/MM/dd',
+            'dd.MM.yyyy',
+            'dd/MM/yyyy',
+            'MM/dd/yyyy',
+            'd MMMM yyyy',
+            'd MMM yyyy',
+            'MMMM d yyyy',
+            'MMM d yyyy'
+        ];
+
+        let timeout;
+
+        from.addEventListener('input', debounce);
+        to.addEventListener('input', debounce);
+
+        function debounce() {
+            clearTimeout(timeout);
+            timeout = setTimeout(calculate, 150);
+        }
+
+        function parseDate(text) {
+            const trimmed = text.trim();
+            if (!trimmed) return null;
+
+            let dt = DateTime.fromISO(trimmed);
+            if (dt.isValid) return dt.startOf('day');
+
+            for (const fmt of FORMATS) {
+                dt = DateTime.fromFormat(trimmed, fmt);
+                if (dt.isValid) return dt.startOf('day');
+            }
+            return null;
+        }
+
+        function calculate() {
+            errors.from.textContent = '';
+            errors.to.textContent = '';
+            parsedLabels.from.textContent = '';
+            parsedLabels.to.textContent = '';
+            breakdown.innerHTML = '';
+
+            const fromRaw = from.value.trim();
+            const toRaw = to.value.trim();
+            const fromDate = parseDate(fromRaw);
+            const toDate = parseDate(toRaw);
+
+            if (fromRaw && !fromDate) errors.from.textContent = 'Unrecognized date';
+            if (toRaw && !toDate) errors.to.textContent = 'Unrecognized date';
+            if (fromDate) parsedLabels.from.textContent = describe(fromDate);
+            if (toDate) parsedLabels.to.textContent = describe(toDate);
+
+            if (!fromDate || !toDate) {
+                daysEl.textContent = '—';
+                daysEl.className = 'days empty';
+                daysLabel.textContent = 'Days';
+                return;
+            }
+
+            const days = toDate.diff(fromDate, 'days').days;
+            daysEl.textContent = days.toLocaleString();
+            daysEl.className = days < 0 ? 'days negative' : 'days';
+            daysLabel.textContent = Math.abs(days) === 1 ? 'Day' : 'Days';
+
+            renderBreakdown(fromDate, toDate, days);
+        }
+
+        function renderBreakdown(fromDate, toDate, days) {
+            const earlier = days < 0 ? toDate : fromDate;
+            const later = days < 0 ? fromDate : toDate;
+            const span = later.diff(earlier, ['years', 'months', 'days']).toObject();
+            const weeks = later.diff(earlier, 'weeks').weeks;
+
+            addRow('Days inclusive', (Math.abs(days) + 1).toLocaleString());
+            addRow('Weeks', formatNumber(weeks));
+            addRow('Calendar span', formatSpan(span));
+            addRow('Weekdays', countWeekdays(earlier, later).toLocaleString());
+            addRow('Weekend days', (Math.abs(days) - countWeekdays(earlier, later)).toLocaleString());
+            addRow('Direction', days === 0 ? 'Same day' : (days < 0 ? 'To is before From' : 'To is after From'));
+        }
+
+        function addRow(key, value) {
+            const li = document.createElement('li');
+            const k = document.createElement('span');
+            k.className = 'k';
+            k.textContent = key;
+            const v = document.createElement('span');
+            v.className = 'v';
+            v.textContent = value;
+            li.appendChild(k);
+            li.appendChild(v);
+            breakdown.appendChild(li);
+        }
+
+        function describe(dt) {
+            return dt.toFormat('cccc, d LLLL yyyy') + '  (' + dt.toISODate() + ')';
+        }
+
+        function formatNumber(n) {
+            return (Math.round(n * 100) / 100).toLocaleString();
+        }
+
+        function formatSpan(span) {
+            const parts = [];
+            const y = Math.round(span.years || 0);
+            const m = Math.round(span.months || 0);
+            const d = Math.round(span.days || 0);
+            if (y) parts.push(y + (Math.abs(y) === 1 ? ' year' : ' years'));
+            if (m) parts.push(m + (Math.abs(m) === 1 ? ' month' : ' months'));
+            if (d || !parts.length) parts.push(d + (Math.abs(d) === 1 ? ' day' : ' days'));
+            return parts.join(', ');
+        }
+
+        // Counts Mon-Fri days in [earlier, later) — the same half-open range the day count uses.
+        function countWeekdays(earlier, later) {
+            const totalDays = later.diff(earlier, 'days').days;
+            const fullWeeks = Math.floor(totalDays / 7);
+            let count = fullWeeks * 5;
+            let cursor = earlier.plus({ weeks: fullWeeks });
+            while (cursor < later) {
+                if (cursor.weekday <= 5) count++;
+                cursor = cursor.plus({ days: 1 });
+            }
+            return count;
+        }
+
+        function setToday() {
+            to.value = DateTime.now().toISODate();
+            calculate();
+        }
+
+        function clearAll() {
+            from.value = '';
+            to.value = '';
+            calculate();
+        }
+
+        function copyText(id) {
+            const el = document.getElementById(id);
+            if (el.value) {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = orig, 1500);
+                });
+            }
+        }
+
+        function copyDays() {
+            const text = daysEl.textContent;
+            if (text === '—') return;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const orig = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = orig, 1500);
+            });
+        }
+
+        // Example data on load
+        from.value = DateTime.now().startOf('year').toISODate();
+        to.value = DateTime.now().toISODate();
+        calculate();
+    </script>
+</body>
+</html>
